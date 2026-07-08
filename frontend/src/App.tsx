@@ -1,6 +1,16 @@
 import { useState, useEffect } from 'react';
 import { fetchFleetReadiness, queryApmAgent } from './api';
 import type { ReadinessResult, ApmAgentResponse, BatteryHealthReport } from './api';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+
+// Fix Leaflet default marker icon issue with bundlers
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
 export default function App() {
   const [data, setData] = useState<ReadinessResult[]>([]);
@@ -9,6 +19,7 @@ export default function App() {
   const [apmLoading, setApmLoading] = useState<boolean>(false);
   const [agentData, setAgentData] = useState<ApmAgentResponse | null>(null);
   const [scheduleData, setScheduleData] = useState<any[] | null>(null);
+  const [mapData, setMapData] = useState<any[] | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -26,10 +37,17 @@ export default function App() {
     try {
       const result = await queryApmAgent(apmQuery);
       setAgentData(result);
-      if (result.results && result.results.length > 0 && 'bay_number' in result.results[0]) {
+
+      // Route frontend display based on LLM tool choice
+      if (result.results.length > 0 && result.results[0].bay_number !== undefined) {
         setScheduleData(result.results);
+        setMapData(null);
+      } else if (result.results.length > 0 && result.results[0].latitude !== undefined) {
+        setMapData(result.results);
+        setScheduleData(null);
       } else {
         setScheduleData(null);
+        setMapData(null);
       }
     } catch (err) {
       console.error(err);
@@ -116,7 +134,7 @@ export default function App() {
               <strong className="font-bold not-italic text-gray-900">Agent Thought Process:</strong> {agentData.agent_thought_process}
             </div>
 
-            {agentData.results.length > 0 && !('bay_number' in agentData.results[0]) && (
+            {agentData.results.length > 0 && 'current_soh' in agentData.results[0] && (
               <table className="w-full text-sm text-left text-gray-500">
                 <thead className="bg-gray-50 text-gray-700 uppercase">
                   <tr>
@@ -171,6 +189,61 @@ export default function App() {
                   <td className="px-4 py-3">{item.reason}</td>
                   <td className="px-4 py-3"><span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">Bay {item.bay_number}</span></td>
                   <td className="px-4 py-3">{item.start_hour}:00</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {/* FEATURE 4: SUPPLY CHAIN RISK MAP */}
+      {mapData && mapData.length > 0 && (
+        <div className="mt-12 p-6 bg-white shadow-md rounded-lg border border-gray-200">
+          <h2 className="text-2xl font-bold mb-4 text-gray-800">Supply Chain Risk &amp; Traceability</h2>
+          <p className="text-sm text-gray-500 mb-4">Geospatial mapping of Tier 1-3 suppliers. Red markers indicate high composite risk (Geopolitical + ESG).</p>
+
+          <div className="mb-6 rounded overflow-hidden border border-gray-200" style={{ height: '450px', width: '100%' }}>
+            <MapContainer center={[20, 0]} zoom={2} style={{ height: '100%', width: '100%' }}>
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              {mapData.map((node, idx) => (
+                <Marker key={idx} position={[node.latitude, node.longitude]}>
+                  <Popup>
+                    <div className="font-semibold">{node.entity_name}</div>
+                    <div>Tier: {node.tier} | Material: {node.material}</div>
+                    <div>Country: {node.country}</div>
+                    <div className="font-bold text-red-600">Risk: {node.composite_risk}/10</div>
+                  </Popup>
+                </Marker>
+              ))}
+            </MapContainer>
+          </div>
+
+          <table className="w-full text-sm text-left text-gray-500">
+            <thead className="bg-gray-50 text-gray-700 uppercase">
+              <tr>
+                <th className="px-4 py-3">Entity</th>
+                <th className="px-4 py-3">Tier</th>
+                <th className="px-4 py-3">Material</th>
+                <th className="px-4 py-3">Country</th>
+                <th className="px-4 py-3">Composite Risk</th>
+              </tr>
+            </thead>
+            <tbody>
+              {mapData.map((node, idx) => (
+                <tr key={idx} className="bg-white border-b">
+                  <td className="px-4 py-3 font-medium text-gray-900">{node.entity_name}</td>
+                  <td className="px-4 py-3">Tier {node.tier}</td>
+                  <td className="px-4 py-3">{node.material}</td>
+                  <td className="px-4 py-3">{node.country}</td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 text-xs font-medium rounded ${
+                      node.composite_risk > 6 ? "bg-red-100 text-red-800" : node.composite_risk > 4 ? "bg-yellow-100 text-yellow-800" : "bg-green-100 text-green-800"
+                    }`}>
+                      {node.composite_risk}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>

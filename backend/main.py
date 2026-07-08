@@ -7,6 +7,7 @@ import random
 from fastapi.middleware.cors import CORSMiddleware
 from apm_models import generate_fleet_telemetry, BatteryHealthReport
 from openai import OpenAI
+from supply_chain import get_traceability_data
 
 
 app = FastAPI()
@@ -35,6 +36,14 @@ tools = [
         "function": {
             "name": "get_maintenance_schedule",
             "description": "Gets the optimized maintenance schedule for vehicles that need repairs.",
+            "parameters": {"type": "object", "properties": {}, "required": []}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_supply_chain_trace",
+            "description": "Traces the battery pack back to raw material mines and calculates geopolitical/ESG risk scores.",
             "parameters": {"type": "object", "properties": {}, "required": []}
         }
     }
@@ -179,6 +188,10 @@ def execute_get_maintenance_schedule():
     return generate_maintenance_schedule()
 
 
+def execute_get_supply_chain_trace():
+    return get_traceability_data()
+
+
 @app.get("/api/fleet-readiness", response_model=List[ReadinessResult])
 def get_fleet_readiness():
     results = [score_vehicle(v) for v in fleet_data]
@@ -207,6 +220,8 @@ def apm_agent(query: AgentQuery):
             data_result = execute_get_anomalies()
         elif function_name == "get_maintenance_schedule":
             data_result = execute_get_maintenance_schedule()
+        elif function_name == "get_supply_chain_trace":
+            data_result = execute_get_supply_chain_trace()
         else:
             data_result = []
 
