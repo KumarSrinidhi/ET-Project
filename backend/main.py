@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import random
 from fastapi.middleware.cors import CORSMiddleware
+from apm_models import generate_fleet_telemetry, BatteryHealthReport
 
 
 app = FastAPI()
@@ -28,6 +29,10 @@ class ReadinessResult(BaseModel):
     recommended_battery_kwh: float
 
 
+class AgentQuery(BaseModel):
+    query: str
+
+
 def generate_synthetic_fleet() -> List[IceVehicle]:
     fleet: List[IceVehicle] = []
     for i in range(1, 101):
@@ -45,6 +50,9 @@ def generate_synthetic_fleet() -> List[IceVehicle]:
 
 
 fleet_data = generate_synthetic_fleet()
+
+
+apm_fleet_data = generate_fleet_telemetry()
 
 
 def score_vehicle(v: IceVehicle) -> ReadinessResult:
@@ -88,6 +96,16 @@ def score_vehicle(v: IceVehicle) -> ReadinessResult:
     )
 
 
+def tool_get_fleet_health() -> list:
+    """Agent Tool: Returns health of all vehicles."""
+    return list(apm_fleet_data.values())
+
+
+def tool_get_anomalies() -> list:
+    """Agent Tool: Returns ONLY vehicles with detected thermal anomalies."""
+    return [v for v in apm_fleet_data.values() if v.is_anomaly]
+
+
 @app.get("/api/fleet-readiness", response_model=List[ReadinessResult])
 def get_fleet_readiness():
     results = [score_vehicle(v) for v in fleet_data]
@@ -95,22 +113,28 @@ def get_fleet_readiness():
     return results
 
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.get("/api/fleet-readiness", response_model=List[ReadinessResult])
-def get_fleet_readiness():
-    results = [score_vehicle(v) for v in fleet_data]
-    # Sort results descending by readiness_score
-    results.sort(key=lambda x: x.readiness_score, reverse=True)
-    return results
-
+@app.post("/api/apm-agent")
+def apm_agent(query: AgentQuery):
+    user_query = query.query.lower()
+    agent_thought = ""
+    data_result = []
+    
+    # Simple keyword-based agent routing (simulating LLM tool calling)
+    if "anomaly" in user_query or "thermal" in user_query or "danger" in user_query:
+        agent_thought = "User asked about anomalies. Using tool: tool_get_anomalies."
+        data_result = tool_get_anomalies()
+    elif "replacement" in user_query or "soonest" in user_query or "lowest soh" in user_query:
+        agent_thought = "User asked for replacement priorities. Using tool: tool_get_fleet_health, sorting by SoH."
+        all_health = tool_get_fleet_health()
+        data_result = sorted(all_health, key=lambda x: x.current_soh)
+    else:
+        agent_thought = "General fleet health query. Using tool: tool_get_fleet_health."
+        data_result = tool_get_fleet_health()
+        
+    return {
+        "agent_thought_process": agent_thought,
+        "results": data_result
+    }
 
 app.add_middleware(
     CORSMiddleware,

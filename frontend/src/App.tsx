@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
-import { fetchFleetReadiness } from './api';
-import type { ReadinessResult } from './api';
+import { fetchFleetReadiness, queryApmAgent } from './api';
+import type { ReadinessResult, ApmAgentResponse, BatteryHealthReport } from './api';
 
 export default function App() {
   const [data, setData] = useState<ReadinessResult[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [apmQuery, setApmQuery] = useState<string>("");
+  const [apmLoading, setApmLoading] = useState<boolean>(false);
+  const [agentData, setAgentData] = useState<ApmAgentResponse | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -15,6 +18,19 @@ export default function App() {
 
     loadData().catch((err) => console.error(err));
   }, []);
+
+  const handleAgentQuery = async () => {
+    if (!apmQuery.trim()) return;
+    setApmLoading(true);
+    try {
+      const result = await queryApmAgent(apmQuery);
+      setAgentData(result);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setApmLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -64,6 +80,66 @@ export default function App() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* FEATURE 2: APM AGENT UI */}
+      <div className="mt-12 p-6 bg-white shadow-md rounded-lg border border-gray-200">
+        <h2 className="text-2xl font-bold mb-4 text-gray-800">EV Asset Performance Management (APM) Agent</h2>
+      
+        <div className="flex gap-4 mb-6">
+          <input
+            type="text"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder='Try: "Show me thermal anomalies" or "Which truck needs replacement soonest?"'
+            value={apmQuery}
+            onChange={(e) => setApmQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAgentQuery()}
+          />
+          <button
+            onClick={handleAgentQuery}
+            disabled={apmLoading}
+            className="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+          >
+            {apmLoading ? "Thinking..." : "Run Query"}
+          </button>
+        </div>
+
+        {agentData && (
+          <div>
+            <div className="mb-4 p-4 bg-gray-50 border-l-4 border-blue-500 text-sm text-gray-700 italic">
+              <strong className="font-bold not-italic text-gray-900">Agent Thought Process:</strong> {agentData.agent_thought_process}
+            </div>
+
+            <table className="w-full text-sm text-left text-gray-500">
+              <thead className="bg-gray-50 text-gray-700 uppercase">
+                <tr>
+                  <th className="px-4 py-3">Vehicle ID</th>
+                  <th className="px-4 py-3">Current SoH (%)</th>
+                  <th className="px-4 py-3">Predicted RUL (Days)</th>
+                  <th className="px-4 py-3">Degradation Rate</th>
+                  <th className="px-4 py-3">Thermal Anomaly</th>
+                </tr>
+              </thead>
+              <tbody>
+                {agentData.results.map((item) => (
+                  <tr key={item.vehicle_id} className="bg-white border-b">
+                    <td className="px-4 py-3 font-medium text-gray-900">{item.vehicle_id}</td>
+                    <td className="px-4 py-3">{item.current_soh.toFixed(1)}</td>
+                    <td className="px-4 py-3">{item.predicted_rul_days}</td>
+                    <td className="px-4 py-3">{item.degradation_rate_per_day.toFixed(4)}</td>
+                    <td className="px-4 py-3">
+                      {item.is_anomaly ? (
+                        <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded">FLAGGED</span>
+                      ) : (
+                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">NORMAL</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
