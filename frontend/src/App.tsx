@@ -8,6 +8,7 @@ export default function App() {
   const [apmQuery, setApmQuery] = useState<string>("");
   const [apmLoading, setApmLoading] = useState<boolean>(false);
   const [agentData, setAgentData] = useState<ApmAgentResponse | null>(null);
+  const [scheduleData, setScheduleData] = useState<any[] | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -25,6 +26,11 @@ export default function App() {
     try {
       const result = await queryApmAgent(apmQuery);
       setAgentData(result);
+      if (result.results && result.results.length > 0 && 'bay_number' in result.results[0]) {
+        setScheduleData(result.results);
+      } else {
+        setScheduleData(null);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -110,37 +116,67 @@ export default function App() {
               <strong className="font-bold not-italic text-gray-900">Agent Thought Process:</strong> {agentData.agent_thought_process}
             </div>
 
-            <table className="w-full text-sm text-left text-gray-500">
-              <thead className="bg-gray-50 text-gray-700 uppercase">
-                <tr>
-                  <th className="px-4 py-3">Vehicle ID</th>
-                  <th className="px-4 py-3">Current SoH (%)</th>
-                  <th className="px-4 py-3">Predicted RUL (Days)</th>
-                  <th className="px-4 py-3">Degradation Rate</th>
-                  <th className="px-4 py-3">Thermal Anomaly</th>
-                </tr>
-              </thead>
-              <tbody>
-                {agentData.results.map((item) => (
-                  <tr key={item.vehicle_id} className="bg-white border-b">
-                    <td className="px-4 py-3 font-medium text-gray-900">{item.vehicle_id}</td>
-                    <td className="px-4 py-3">{item.current_soh.toFixed(1)}</td>
-                    <td className="px-4 py-3">{item.predicted_rul_days}</td>
-                    <td className="px-4 py-3">{item.degradation_rate_per_day.toFixed(4)}</td>
-                    <td className="px-4 py-3">
-                      {item.is_anomaly ? (
-                        <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded">FLAGGED</span>
-                      ) : (
-                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">NORMAL</span>
-                      )}
-                    </td>
+            {agentData.results.length > 0 && !('bay_number' in agentData.results[0]) && (
+              <table className="w-full text-sm text-left text-gray-500">
+                <thead className="bg-gray-50 text-gray-700 uppercase">
+                  <tr>
+                    <th className="px-4 py-3">Vehicle ID</th>
+                    <th className="px-4 py-3">Current SoH (%)</th>
+                    <th className="px-4 py-3">Predicted RUL (Days)</th>
+                    <th className="px-4 py-3">Degradation Rate</th>
+                    <th className="px-4 py-3">Thermal Anomaly</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {agentData.results.map((item) => (
+                    <tr key={item.vehicle_id} className="bg-white border-b">
+                      <td className="px-4 py-3 font-medium text-gray-900">{item.vehicle_id}</td>
+                      <td className="px-4 py-3">{(item.current_soh as number).toFixed(1)}</td>
+                      <td className="px-4 py-3">{item.predicted_rul_days}</td>
+                      <td className="px-4 py-3">{(item.degradation_rate_per_day as number).toFixed(4)}</td>
+                      <td className="px-4 py-3">
+                        {item.is_anomaly ? (
+                          <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded">FLAGGED</span>
+                        ) : (
+                          <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">NORMAL</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
       </div>
+
+      {/* FEATURE 3: MAINTENANCE SCHEDULE */}
+      {scheduleData && scheduleData.length > 0 && (
+        <div className="mt-12 p-6 bg-white shadow-md rounded-lg border border-gray-200">
+          <h2 className="text-2xl font-bold mb-4 text-gray-800">Maintenance Operations Optimiser</h2>
+          <p className="text-sm text-gray-500 mb-4">Greedy-scheduled based on APM triggers. Constraints: 3 Bays, 16-hour max shift.</p>
+          <table className="w-full text-sm text-left text-gray-500">
+            <thead className="bg-gray-50 text-gray-700 uppercase">
+              <tr>
+                <th className="px-4 py-3">Vehicle ID</th>
+                <th className="px-4 py-3">Reason</th>
+                <th className="px-4 py-3">Assigned Bay</th>
+                <th className="px-4 py-3">Start Time (Hour)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {scheduleData.map((item) => (
+                <tr key={item.vehicle_id} className="bg-white border-b">
+                  <td className="px-4 py-3 font-medium text-gray-900">{item.vehicle_id}</td>
+                  <td className="px-4 py-3">{item.reason}</td>
+                  <td className="px-4 py-3"><span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">Bay {item.bay_number}</span></td>
+                  <td className="px-4 py-3">{item.start_hour}:00</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

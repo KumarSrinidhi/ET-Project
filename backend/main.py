@@ -1,13 +1,44 @@
 from typing import List
+import json
 
 from fastapi import FastAPI
 from pydantic import BaseModel
 import random
 from fastapi.middleware.cors import CORSMiddleware
 from apm_models import generate_fleet_telemetry, BatteryHealthReport
+from openai import OpenAI
 
 
 app = FastAPI()
+
+client = OpenAI()
+
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_fleet_health",
+            "description": "Gets the battery State of Health, RUL, and degradation rate for all EVs.",
+            "parameters": {"type": "object", "properties": {}, "required": []}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_anomalies",
+            "description": "Gets only the vehicles that have flagged a thermal anomaly.",
+            "parameters": {"type": "object", "properties": {}, "required": []}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_maintenance_schedule",
+            "description": "Gets the optimized maintenance schedule for vehicles that need repairs.",
+            "parameters": {"type": "object", "properties": {}, "required": []}
+        }
+    }
+]
 
 
 class IceVehicle(BaseModel):
@@ -33,6 +64,19 @@ class AgentQuery(BaseModel):
     query: str
 
 
+class MaintenanceTask(BaseModel):
+    vehicle_id: str
+    reason: str
+    duration_hours: float
+
+
+class ScheduledTask(BaseModel):
+    vehicle_id: str
+    reason: str
+    bay_number: int
+    start_hour: int
+
+
 def generate_synthetic_fleet() -> List[IceVehicle]:
     fleet: List[IceVehicle] = []
     for i in range(1, 101):
@@ -50,7 +94,6 @@ def generate_synthetic_fleet() -> List[IceVehicle]:
 
 
 fleet_data = generate_synthetic_fleet()
-
 
 apm_fleet_data = generate_fleet_telemetry()
 
@@ -96,14 +139,44 @@ def score_vehicle(v: IceVehicle) -> ReadinessResult:
     )
 
 
-def tool_get_fleet_health() -> list:
-    """Agent Tool: Returns health of all vehicles."""
-    return list(apm_fleet_data.values())
+def execute_get_fleet_health():
+    return [v.model_dump() for v in apm_fleet_data.values()]
 
 
-def tool_get_anomalies() -> list:
-    """Agent Tool: Returns ONLY vehicles with detected thermal anomalies."""
-    return [v for v in apm_fleet_data.values() if v.is_anomaly]
+def execute_get_anomalies():
+    return [v.model_dump() for v in apm_fleet_data.values() if v.is_anomaly]
+
+
+def generate_maintenance_schedule() -> list:
+    tasks = []
+    for v in apm_fleet_data.values():
+        if v.is_anomaly:
+            tasks.append(MaintenanceTask(vehicle_id=v.vehicle_id, reason="Thermal Anomaly Deep-Dive", duration_hours=8.0))
+        elif v.current_soh < 85.0:
+            tasks.append(MaintenanceTask(vehicle_id=v.vehicle_id, reason="SoH Inspection / Battery Swap", duration_hours=4.0))
+
+    tasks.sort(key=lambda x: x.duration_hours, reverse=True)
+
+    bays = {1: 0, 2: 0, 3: 0}
+    schedule = []
+
+    for task in tasks:
+        for bay_num, current_hour in bays.items():
+            if current_hour + task.duration_hours <= 16:
+                schedule.append(ScheduledTask(
+                    vehicle_id=task.vehicle_id,
+                    reason=task.reason,
+                    bay_number=bay_num,
+                    start_hour=current_hour
+                ))
+                bays[bay_num] += task.duration_hours
+                break
+
+    return [s.model_dump() for s in schedule]
+
+
+def execute_get_maintenance_schedule():
+    return generate_maintenance_schedule()
 
 
 @app.get("/api/fleet-readiness", response_model=List[ReadinessResult])
@@ -115,26 +188,38 @@ def get_fleet_readiness():
 
 @app.post("/api/apm-agent")
 def apm_agent(query: AgentQuery):
-    user_query = query.query.lower()
-    agent_thought = ""
-    data_result = []
-    
-    # Simple keyword-based agent routing (simulating LLM tool calling)
-    if "anomaly" in user_query or "thermal" in user_query or "danger" in user_query:
-        agent_thought = "User asked about anomalies. Using tool: tool_get_anomalies."
-        data_result = tool_get_anomalies()
-    elif "replacement" in user_query or "soonest" in user_query or "lowest soh" in user_query:
-        agent_thought = "User asked for replacement priorities. Using tool: tool_get_fleet_health, sorting by SoH."
-        all_health = tool_get_fleet_health()
-        data_result = sorted(all_health, key=lambda x: x.current_soh)
+    response = client.chat.completions.create(
+        model="qwen/qwen3-32b",
+        messages=[{"role": "user", "content": query.query}],
+        tools=tools,
+        tool_choice="auto"
+    )
+
+    message = response.choices[0].message
+
+    if message.tool_calls:
+        tool_call = message.tool_calls[0]
+        function_name = tool_call.function.name
+
+        if function_name == "get_fleet_health":
+            data_result = execute_get_fleet_health()
+        elif function_name == "get_anomalies":
+            data_result = execute_get_anomalies()
+        elif function_name == "get_maintenance_schedule":
+            data_result = execute_get_maintenance_schedule()
+        else:
+            data_result = []
+
+        return {
+            "agent_thought_process": f"LLM decided to use tool: {function_name}",
+            "results": data_result
+        }
     else:
-        agent_thought = "General fleet health query. Using tool: tool_get_fleet_health."
-        data_result = tool_get_fleet_health()
-        
-    return {
-        "agent_thought_process": agent_thought,
-        "results": data_result
-    }
+        return {
+            "agent_thought_process": message.content,
+            "results": []
+        }
+
 
 app.add_middleware(
     CORSMiddleware,
