@@ -1,3 +1,5 @@
+import requests
+import time
 from pydantic import BaseModel
 from typing import List
 
@@ -8,32 +10,50 @@ class SupplyNode(BaseModel):
     country: str
     latitude: float
     longitude: float
-    geopolitical_risk: int  # 1-10
-    esg_risk: int           # 1-10
-    composite_risk: float   # Calculated
+    composite_risk: float
+    risk_justification: str  # Will hold the LLM's explanation of the live news
 
-def build_supply_chain() -> List[SupplyNode]:
-    # Hardcoded realistic traceability tree for a single NMC battery pack
-    raw_data = [
-        # Tier 3: Raw Mining (Real Lat/Lon)
-        {"entity_name": "Salar de Atacama Mine", "tier": 3, "material": "Lithium", "country": "Chile", "latitude": -23.5, "longitude": -68.0, "geopolitical_risk": 3, "esg_risk": 2},
-        {"entity_name": "Lubumbashi Cobalt Mine", "tier": 3, "material": "Cobalt", "country": "DRC", "latitude": -11.6, "longitude": 27.4, "geopolitical_risk": 9, "esg_risk": 9},
-        {"entity_name": "Sulawesi Nickel Mine", "tier": 3, "material": "Nickel", "country": "Indonesia", "latitude": -1.5, "longitude": 121.0, "geopolitical_risk": 4, "esg_risk": 6},
-        
-        # Tier 2: Processing
-        {"entity_name": "Shanghai Cathode Corp", "tier": 2, "material": "NMC Cathode", "country": "China", "latitude": 31.2, "longitude": 121.4, "geopolitical_risk": 7, "esg_risk": 5},
-        
-        # Tier 1: Cell/Pack Manufacturing
-        {"entity_name": "Panasonic EV Pack Plant", "tier": 1, "material": "Full Battery Pack", "country": "USA", "latitude": 39.8, "longitude": -104.9, "geopolitical_risk": 1, "esg_risk": 1},
-    ]
-    
+RAW_ENTITIES = [
+    {"entity_name": "Salar de Atacama Mine", "search_query": "Salar de Atacama, Chile",                      "tier": 3, "material": "Lithium",          "country": "Chile"},
+    {"entity_name": "Lubumbashi Cobalt Mine", "search_query": "Lubumbashi, Democratic Republic of the Congo", "tier": 3, "material": "Cobalt",           "country": "DRC"},
+    {"entity_name": "Sulawesi Nickel Mine",   "search_query": "Sulawesi, Indonesia",                         "tier": 3, "material": "Nickel",           "country": "Indonesia"},
+    {"entity_name": "Shanghai Cathode Corp",  "search_query": "Shanghai, China",                            "tier": 2, "material": "NMC Cathode",      "country": "China"},
+    {"entity_name": "Panasonic EV Pack Plant","search_query": "Denver, Colorado, USA",                      "tier": 1, "material": "Full Battery Pack","country": "USA"},
+]
+
+def fetch_real_coordinates(entity_name: str, country: str, search_query: str) -> tuple[float, float]:
+    """Hits OpenStreetMap Nominatim API for real lat/lon."""
+    url = "https://nominatim.openstreetmap.org/search"
+    params = {"q": search_query, "format": "json", "limit": 1}
+    headers = {"User-Agent": "EV-Hackathon-Demo/1.0 (contact@hackathon.dev)"}
+
+    try:
+        response = requests.get(url, params=params, headers=headers, timeout=5)
+        data = response.json()
+        if data:
+            return float(data[0]["lat"]), float(data[0]["lon"])
+    except Exception:
+        pass
+    return 0.0, 0.0
+
+def get_base_nodes() -> List[SupplyNode]:
+    """Gets nodes with real coordinates but baseline risk."""
     nodes = []
-    for item in raw_data:
-        # Weighted composite risk calculation
-        composite = (item["geopolitical_risk"] * 0.6) + (item["esg_risk"] * 0.4)
-        nodes.append(SupplyNode(**item, composite_risk=round(composite, 2)))
-        
+    for entity in RAW_ENTITIES:
+        lat, lon = fetch_real_coordinates(entity["entity_name"], entity["country"], entity["search_query"])
+        time.sleep(1)  # Respect OSM rate limits
+
+        nodes.append(SupplyNode(
+            entity_name=entity["entity_name"],
+            tier=entity["tier"],
+            material=entity["material"],
+            country=entity["country"],
+            latitude=lat,
+            longitude=lon,
+            composite_risk=5.0,  # Baseline
+            risk_justification="Awaiting live news analysis..."
+        ))
     return nodes
 
-def get_traceability_data() -> List[dict]:
-    return [node.model_dump() for node in build_supply_chain()]
+# Cache the coordinates so we don't hammer OSM on every query
+BASE_NODES = get_base_nodes()

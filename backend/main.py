@@ -1,5 +1,10 @@
 from typing import List
 import json
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env from project root (one level up from backend/)
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -7,7 +12,8 @@ import random
 from fastapi.middleware.cors import CORSMiddleware
 from apm_models import generate_fleet_telemetry, BatteryHealthReport
 from openai import OpenAI
-from supply_chain import get_traceability_data
+import feedparser
+from supply_chain import BASE_NODES, SupplyNode
 
 
 app = FastAPI()
@@ -43,7 +49,7 @@ tools = [
         "type": "function",
         "function": {
             "name": "get_supply_chain_trace",
-            "description": "Traces the battery pack back to raw material mines and calculates geopolitical/ESG risk scores.",
+            "description": "Traces the battery pack to mines using REAL-TIME coordinates, and fetches LIVE news from Mining.com to calculate dynamic geopolitical risk scores. Use this for supply chain queries.",
             "parameters": {"type": "object", "properties": {}, "required": []}
         }
     }
@@ -188,8 +194,97 @@ def execute_get_maintenance_schedule():
     return generate_maintenance_schedule()
 
 
-def execute_get_supply_chain_trace():
-    return get_traceability_data()
+RSS_FEEDS = [
+    "https://www.mining.com/feed/",
+    "http://feeds.bbci.co.uk/news/world/rss.xml",
+    "http://rss.cnn.com/rss/edition_world.rss",
+    "https://www.cnbc.com/id/100727362/device/rss/rss.html",
+    "http://feeds.feedburner.com/ndtvnews-world-news",
+    "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
+    "https://news.google.com/rss",
+    "http://feeds.washingtonpost.com/rss/world",
+    "https://www.reddit.com/r/worldnews/.rss",
+    "https://timesofindia.indiatimes.com/rssfeeds/296589292.cms",
+    "https://www.theguardian.com/world/rss",
+    "https://www.yahoo.com/news/rss",
+]
+
+def execute_live_news_risk_assessment() -> list:
+    """Scrapes live RSS feeds from 12 sources and uses LLM to dynamically score risk."""
+    import json
+
+    print(f"Fetching live news from {len(RSS_FEEDS)} RSS feeds...")
+    all_entries = []
+    for url in RSS_FEEDS:
+        try:
+            feed = feedparser.parse(url)
+            all_entries.extend(feed.entries[:3])  # 3 articles per source = ~36 total
+            print(f"  OK: {url} ({len(feed.entries)} articles)")
+        except Exception as e:
+            print(f"  FAIL: {url} - {e}")
+
+    news_text = ""
+    seen = set()
+    for entry in all_entries:
+        title = entry.get("title", "").strip()
+        if title and title not in seen:
+            seen.add(title)
+            summary = entry.get("summary", "")[:200]  # Cap summary length
+            news_text += f"- {title}. {summary}\n"
+
+    print(f"Total unique headlines aggregated: {len(seen)}")
+
+    if not news_text:
+        return [n.model_dump() for n in BASE_NODES]
+
+    prompt = f"""
+You are an EV Supply Chain Risk Analyst. Based STRICTLY on the following live news headlines from today,
+assess the supply chain risk (1-10) for these specific regions: Chile (Lithium), DRC (Cobalt), Indonesia (Nickel), China (Processing), USA (Manufacturing).
+If a region is not mentioned in the news, assign a baseline risk of 4.0.
+If there are strikes, export bans, or conflicts, increase the risk. If there are new investments or smooth operations, decrease it.
+
+LIVE NEWS:
+{news_text}
+
+Respond ONLY with a valid JSON object mapping the country name to a dictionary containing "risk_score" (float) and "justification" (short string).
+Example format:
+{{
+    "Chile": {{"risk_score": 8.5, "justification": "Major lithium miner strike announced today."}},
+    "DRC": {{"risk_score": 4.0, "justification": "No major news today."}}
+}}
+"""
+
+    try:
+        response = client.chat.completions.create(
+            model="qwen/qwen3-32b",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2
+        )
+        raw_response = response.choices[0].message.content
+        clean_json = raw_response.replace("```json", "").replace("```", "").strip()
+        # Strip any <think>...</think> blocks from reasoning models
+        import re
+        clean_json = re.sub(r"<think>.*?</think>", "", clean_json, flags=re.DOTALL).strip()
+        risk_assessments = json.loads(clean_json)
+    except Exception as e:
+        print(f"LLM News analysis failed: {e}")
+        risk_assessments = {}
+
+    final_nodes = []
+    for node in BASE_NODES:
+        assessment = risk_assessments.get(node.country, {"risk_score": 5.0, "justification": "News analysis inconclusive."})
+        final_nodes.append(SupplyNode(
+            entity_name=node.entity_name,
+            tier=node.tier,
+            material=node.material,
+            country=node.country,
+            latitude=node.latitude,
+            longitude=node.longitude,
+            composite_risk=float(assessment.get("risk_score", 5.0)),
+            risk_justification=assessment.get("justification", "")
+        ))
+
+    return [n.model_dump() for n in final_nodes]
 
 
 @app.get("/api/fleet-readiness", response_model=List[ReadinessResult])
@@ -221,7 +316,7 @@ def apm_agent(query: AgentQuery):
         elif function_name == "get_maintenance_schedule":
             data_result = execute_get_maintenance_schedule()
         elif function_name == "get_supply_chain_trace":
-            data_result = execute_get_supply_chain_trace()
+            data_result = execute_live_news_risk_assessment()
         else:
             data_result = []
 

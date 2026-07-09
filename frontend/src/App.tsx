@@ -212,8 +212,8 @@ export default function App() {
                   <Popup>
                     <div className="font-semibold">{node.entity_name}</div>
                     <div>Tier: {node.tier} | Material: {node.material}</div>
-                    <div>Country: {node.country}</div>
-                    <div className="font-bold text-red-600">Risk: {node.composite_risk}/10</div>
+                    <div className="font-bold text-red-600">Live Risk: {node.composite_risk}/10</div>
+                    <div className="text-xs mt-1 max-w-[200px] italic text-gray-700">{node.risk_justification}</div>
                   </Popup>
                 </Marker>
               ))}
