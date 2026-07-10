@@ -3,8 +3,8 @@ import json
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env from project root (one level up from backend/)
-load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+# Load .env from backend/ directory
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -12,13 +12,21 @@ import random
 from fastapi.middleware.cors import CORSMiddleware
 from apm_models import generate_fleet_telemetry, BatteryHealthReport
 from openai import OpenAI
+import httpx
 import feedparser
 from supply_chain import BASE_NODES, SupplyNode
+from maintenance_optimizer import optimize_schedule, OptimizedSchedule
 
 
 app = FastAPI()
 
-client = OpenAI()
+client = None
+
+def get_openai_client():
+    global client
+    if client is None:
+        client = OpenAI(http_client=httpx.Client(verify=False))
+    return client
 
 tools = [
     {
@@ -163,31 +171,9 @@ def execute_get_anomalies():
 
 
 def generate_maintenance_schedule() -> list:
-    tasks = []
-    for v in apm_fleet_data.values():
-        if v.is_anomaly:
-            tasks.append(MaintenanceTask(vehicle_id=v.vehicle_id, reason="Thermal Anomaly Deep-Dive", duration_hours=8.0))
-        elif v.current_soh < 85.0:
-            tasks.append(MaintenanceTask(vehicle_id=v.vehicle_id, reason="SoH Inspection / Battery Swap", duration_hours=4.0))
-
-    tasks.sort(key=lambda x: x.duration_hours, reverse=True)
-
-    bays = {1: 0, 2: 0, 3: 0}
-    schedule = []
-
-    for task in tasks:
-        for bay_num, current_hour in bays.items():
-            if current_hour + task.duration_hours <= 16:
-                schedule.append(ScheduledTask(
-                    vehicle_id=task.vehicle_id,
-                    reason=task.reason,
-                    bay_number=bay_num,
-                    start_hour=current_hour
-                ))
-                bays[bay_num] += task.duration_hours
-                break
-
-    return [s.model_dump() for s in schedule]
+    """Use the full constraint-based optimizer from Feature 3."""
+    result = optimize_schedule()
+    return [s.model_dump() for s in result.schedule]
 
 
 def execute_get_maintenance_schedule():
@@ -255,8 +241,8 @@ Example format:
 """
 
     try:
-        response = client.chat.completions.create(
-            model="qwen/qwen3-32b",
+        response = get_openai_client().chat.completions.create(
+            model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2
         )
@@ -294,41 +280,90 @@ def get_fleet_readiness():
     return results
 
 
+@app.get("/api/maintenance-schedule")
+def get_maintenance_schedule_endpoint():
+    """Feature 3: Full optimized maintenance schedule with KPIs and constraints."""
+    result = optimize_schedule()
+    return result.model_dump()
+
+
+TOOL_KEYWORD_MAP = {
+    "health": "get_fleet_health",
+    "soh": "get_fleet_health",
+    "battery": "get_fleet_health",
+    "rul": "get_fleet_health",
+    "degradation": "get_fleet_health",
+    "anomal": "get_anomalies",
+    "thermal": "get_anomalies",
+    "flag": "get_anomalies",
+    "maintenance": "get_maintenance_schedule",
+    "schedule": "get_maintenance_schedule",
+    "repair": "get_maintenance_schedule",
+    "supply": "get_supply_chain_trace",
+    "trace": "get_supply_chain_trace",
+    "chain": "get_supply_chain_trace",
+    "risk": "get_supply_chain_trace",
+    "supplier": "get_supply_chain_trace",
+}
+
+TOOL_EXECUTORS = {
+    "get_fleet_health": execute_get_fleet_health,
+    "get_anomalies": execute_get_anomalies,
+    "get_maintenance_schedule": execute_get_maintenance_schedule,
+    "get_supply_chain_trace": execute_live_news_risk_assessment,
+}
+
+
+def _fallback_tool(query_text: str) -> str | None:
+    q = query_text.lower()
+    for keyword, tool_name in TOOL_KEYWORD_MAP.items():
+        if keyword in q:
+            return tool_name
+    return None
+
+
 @app.post("/api/apm-agent")
 def apm_agent(query: AgentQuery):
-    response = client.chat.completions.create(
-        model="qwen/qwen3-32b",
-        messages=[{"role": "user", "content": query.query}],
-        tools=tools,
-        tool_choice="auto"
-    )
+    function_name = None
 
-    message = response.choices[0].message
+    # Try LLM tool selection first
+    try:
+        response = get_openai_client().chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": "You are an EV fleet management assistant. Use the provided tools to answer queries about fleet health, anomalies, maintenance schedules, and supply chain tracing. Always use a tool."},
+                {"role": "user", "content": query.query}
+            ],
+            tools=tools,
+            tool_choice="auto"
+        )
+        message = response.choices[0].message
+        if message.tool_calls:
+            function_name = message.tool_calls[0].function.name
+    except Exception:
+        pass
 
-    if message.tool_calls:
-        tool_call = message.tool_calls[0]
-        function_name = tool_call.function.name
+    # Fallback: keyword matching if LLM failed or didn't pick a tool
+    if not function_name:
+        function_name = _fallback_tool(query.query)
 
-        if function_name == "get_fleet_health":
-            data_result = execute_get_fleet_health()
-        elif function_name == "get_anomalies":
-            data_result = execute_get_anomalies()
-        elif function_name == "get_maintenance_schedule":
-            data_result = execute_get_maintenance_schedule()
-        elif function_name == "get_supply_chain_trace":
-            data_result = execute_live_news_risk_assessment()
-        else:
-            data_result = []
-
+    if function_name and function_name in TOOL_EXECUTORS:
+        try:
+            data_result = TOOL_EXECUTORS[function_name]()
+        except Exception as e:
+            return {
+                "agent_thought_process": f"Tool {function_name} failed: {str(e)}",
+                "results": []
+            }
         return {
             "agent_thought_process": f"LLM decided to use tool: {function_name}",
             "results": data_result
         }
-    else:
-        return {
-            "agent_thought_process": message.content,
-            "results": []
-        }
+
+    return {
+        "agent_thought_process": "Could not determine which tool to use. Try: 'Show fleet health', 'Show anomalies', 'Generate maintenance schedule', or 'Trace supply chain'.",
+        "results": []
+    }
 
 
 app.add_middleware(
@@ -338,3 +373,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/")
+def root():
+    return {
+        "platform": "EV Supply Chain & Asset Intelligence",
+        "status": "running",
+        "endpoints": [
+            "/api/fleet-readiness",
+            "/api/maintenance-schedule",
+            "/api/apm-agent",
+        ],
+    }
