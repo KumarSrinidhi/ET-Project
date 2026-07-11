@@ -66,7 +66,7 @@ class MaintenanceTask(BaseModel):
     requires_senior_tech: bool
     spare_parts_needed: List[str]
     spare_parts_available: bool
-    estimated_cost_usd: float
+    estimated_cost_inr: float
 
 
 class ScheduledTask(BaseModel):
@@ -80,7 +80,7 @@ class ScheduledTask(BaseModel):
     technician_name: str
     start_hour: float
     end_hour: float
-    estimated_cost_usd: float
+    estimated_cost_inr: float
     spare_parts_needed: List[str]
     status: str                  # "scheduled", "delayed_parts", "overflow"
 
@@ -90,7 +90,7 @@ class ScheduleKPIs(BaseModel):
     scheduled_tasks: int
     overflow_tasks: int
     delayed_tasks: int
-    total_cost_usd: float
+    total_cost_inr: float
     avg_wait_hours: float
     bay_utilization_pct: List[float]     # per bay
     total_downtime_hours: float
@@ -187,7 +187,7 @@ def generate_maintenance_tasks_from_apm() -> List[MaintenanceTask]:
                 requires_senior_tech=True,
                 spare_parts_needed=["thermal_paste", "sensor_array"],
                 spare_parts_available=True,
-                estimated_cost_usd=4500.0,
+                estimated_cost_inr=4500.0,
             ))
             # Critical vehicles also need coolant service
             task_counter += 1
@@ -201,7 +201,7 @@ def generate_maintenance_tasks_from_apm() -> List[MaintenanceTask]:
                 requires_senior_tech=False,
                 spare_parts_needed=["coolant_fluid"],
                 spare_parts_available=True,
-                estimated_cost_usd=800.0,
+                estimated_cost_inr=800.0,
             ))
 
         # High: Battery at end of life
@@ -219,7 +219,7 @@ def generate_maintenance_tasks_from_apm() -> List[MaintenanceTask]:
                 requires_senior_tech=True,
                 spare_parts_needed=[chemistry, "bms_module"],
                 spare_parts_available=available,
-                estimated_cost_usd=12000.0,
+                estimated_cost_inr=12000.0,
             ))
 
         # Medium: Degrading battery
@@ -235,7 +235,7 @@ def generate_maintenance_tasks_from_apm() -> List[MaintenanceTask]:
                 requires_senior_tech=False,
                 spare_parts_needed=["sensor_array"],
                 spare_parts_available=True,
-                estimated_cost_usd=1200.0,
+                estimated_cost_inr=1200.0,
             ))
 
         # Low: Preventive maintenance for healthy vehicles approaching threshold
@@ -251,7 +251,7 @@ def generate_maintenance_tasks_from_apm() -> List[MaintenanceTask]:
                 requires_senior_tech=False,
                 spare_parts_needed=[],
                 spare_parts_available=True,
-                estimated_cost_usd=350.0,
+                estimated_cost_inr=350.0,
             ))
 
         # Charging calibration for vehicles with high degradation rate
@@ -267,7 +267,7 @@ def generate_maintenance_tasks_from_apm() -> List[MaintenanceTask]:
                 requires_senior_tech=False,
                 spare_parts_needed=["charging_connector"],
                 spare_parts_available=True,
-                estimated_cost_usd=600.0,
+                estimated_cost_inr=600.0,
             ))
 
     return tasks
@@ -348,7 +348,7 @@ def optimize_schedule() -> OptimizedSchedule:
                 technician_name="N/A",
                 start_hour=0,
                 end_hour=0,
-                estimated_cost_usd=task.estimated_cost_usd,
+                estimated_cost_inr=task.estimated_cost_inr,
                 spare_parts_needed=task.spare_parts_needed,
                 status="delayed_parts",
             ))
@@ -413,7 +413,7 @@ def optimize_schedule() -> OptimizedSchedule:
                 technician_name=best_tech.name,
                 start_hour=best_start,
                 end_hour=task_end,
-                estimated_cost_usd=task.estimated_cost_usd,
+                estimated_cost_inr=task.estimated_cost_inr,
                 spare_parts_needed=task.spare_parts_needed,
                 status="scheduled",
             ))
@@ -431,7 +431,7 @@ def optimize_schedule() -> OptimizedSchedule:
                 technician_name="N/A",
                 start_hour=0,
                 end_hour=0,
-                estimated_cost_usd=task.estimated_cost_usd,
+                estimated_cost_inr=task.estimated_cost_inr,
                 spare_parts_needed=task.spare_parts_needed,
                 status="overflow",
             ))
@@ -443,7 +443,7 @@ def optimize_schedule() -> OptimizedSchedule:
     overflow_count = len(overflow)
     delayed_count = len(delayed)
 
-    total_cost = sum(t.estimated_cost_usd for t in all_results)
+    total_cost = sum(t.estimated_cost_inr for t in all_results)
 
     # Average wait: how long from shift start until task begins
     if scheduled:
@@ -474,7 +474,7 @@ def optimize_schedule() -> OptimizedSchedule:
         scheduled_tasks=scheduled_count,
         overflow_tasks=overflow_count,
         delayed_tasks=delayed_count,
-        total_cost_usd=round(total_cost, 2),
+        total_cost_inr=round(total_cost, 2),
         avg_wait_hours=round(avg_wait, 2),
         bay_utilization_pct=bay_util,
         total_downtime_hours=round(total_downtime, 1),

@@ -370,27 +370,88 @@ def calculate_monthly_progress() -> List[MonthlyProgress]:
 
 
 def generate_recommendations(kpis: NetZeroKPIs, fleet_comparison: List[FleetEmissionComparison]) -> List[str]:
-    """Generate actionable recommendations based on current data."""
+    """Use LLM to generate specific, data-backed carbon reduction recommendations."""
+    import os
+    try:
+        from openai import OpenAI
+        client_l = OpenAI()
+    except Exception:
+        return _fallback_recommendations(kpis, fleet_comparison)
+
+    total_emissions = kpis.total_emissions_tons_co2
+    scope_1 = kpis.scope_1_tons
+    scope_2 = kpis.scope_2_tons
+    scope_3 = kpis.scope_3_tons
+    renewable_pct = kpis.renewable_energy_pct
+    ev_pct = kpis.ev_fleet_pct
+    intensity = kpis.carbon_intensity_g_per_km
+    avoided = kpis.avoided_emissions_tons
+    yoy = kpis.yoy_reduction_pct
+    years = kpis.years_to_net_zero
+    target = kpis.target_year
+
+    fleet_summary = ", ".join(
+        f"{f.vehicle_id}({f.annual_km}km/yr, EV:{f.ev_emissions_kg_co2_per_year}kg, ICE:{f.ice_equivalent_kg_co2_per_year}kg, {f.avoided_pct}% avoided)"
+        for f in fleet_comparison[:5]
+    )
+
+    prompt = f"""You are a senior sustainability analyst at an EV manufacturing company. You have access to real emissions data. Write 5-7 specific, actionable recommendations to reduce carbon emissions.
+
+CURRENT DATA:
+- Total emissions: {total_emissions} tons CO2/year
+- Scope 1 (direct): {scope_1} tons
+- Scope 2 (electricity): {scope_2} tons  
+- Scope 3 (supply chain): {scope_3} tons
+- Renewable energy: {renewable_pct}%
+- EV fleet penetration: {ev_pct}%
+- Carbon intensity: {intensity} g/km
+- Avoided emissions (EV vs ICE): {avoided} tons
+- Year-over-year reduction: {yoy}%
+- Years to net zero: {years}, target year: {target}
+- Fleet sample: {fleet_summary}
+
+RULES:
+- Each recommendation must reference specific numbers from the data above.
+- Be specific: mention percentages, tons, rupee costs where appropriate.
+- Prioritize the biggest emission source (Scope 3 = {scope_3}t is {100*scope_3/total_emissions:.0f}% of total).
+- If renewable energy is under 50%, call out specific targets.
+- If EV penetration is under 100%, recommend accelerators based on the fleet data.
+- No generic advice. Everything must tie back to the numbers provided.
+
+Respond with ONLY a JSON array of strings. Each string is one recommendation. Keep each under 160 characters."""
+
+    try:
+        response = client_l.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.4,
+            timeout=20
+        )
+        raw = response.choices[0].message.content
+        import re
+        raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
+        raw = raw.replace("```json", "").replace("```", "").strip()
+        import json
+        recs = json.loads(raw)
+        if isinstance(recs, list) and len(recs) > 0:
+            return recs[:7]
+    except Exception:
+        pass
+
+    return _fallback_recommendations(kpis, fleet_comparison)
+
+
+def _fallback_recommendations(kpis: NetZeroKPIs, fleet_comparison: List[FleetEmissionComparison]) -> List[str]:
+    """Fallback: basic rule-based recommendations if LLM is unavailable."""
     recs = []
-
     if kpis.renewable_energy_pct < 50:
-        recs.append(f"Increase renewable energy procurement from {kpis.renewable_energy_pct}% to 80% — this alone could reduce Scope 2 by ~60%")
-
+        recs.append(f"Renewable energy at {kpis.renewable_energy_pct}% — target 80% by adding 500 kW rooftop solar. Cuts Scope 2 by ~60%.")
     if kpis.ev_fleet_pct < 100:
-        remaining_ice = 100 - kpis.ev_fleet_pct
-        recs.append(f"Electrify remaining {remaining_ice:.0f}% of fleet — prioritize high-readiness vehicles from Feature 1 scoring")
-
+        recs.append(f"Fleet electrification at {kpis.ev_fleet_pct}% — prioritize high-readiness vehicles from the scoring matrix to close the gap.")
     if kpis.scope_3_tons > kpis.scope_1_tons + kpis.scope_2_tons:
-        recs.append("Scope 3 dominates total emissions — engage suppliers on carbon reduction targets, prioritize lower-carbon material sources")
-
-    avg_avoided = sum(f.avoided_pct for f in fleet_comparison) / max(len(fleet_comparison), 1)
-    if avg_avoided < 60:
-        recs.append(f"Average avoided emissions only {avg_avoided:.0f}% — shift EV charging to off-peak renewable periods to increase savings")
-
-    recs.append("Install on-site solar (500 kW) at depot to reduce grid dependency and Scope 2 emissions by ~40%")
-    recs.append("Implement battery second-life program to offset Scope 3 end-of-life emissions and generate carbon credits")
-    recs.append("Switch upstream logistics to rail where possible — reduces transport emissions by 60% vs road freight")
-
+        recs.append(f"Scope 3 at {kpis.scope_3_tons}t is the dominant source — mandate carbon disclosures from top 5 suppliers by volume.")
+    recs.append(f"Current carbon intensity {kpis.carbon_intensity_g_per_km} g/km — shift EV charging to off-peak hours (00:00-06:00) when grid is cleaner.")
+    recs.append(f"Avoided {kpis.avoided_emissions_tons}t via electrification — accelerate ICE retirement on routes under 200 km daily range.")
     return recs
 
 

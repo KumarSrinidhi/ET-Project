@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from apm_models import generate_fleet_telemetry, BatteryHealthReport
 from openai import OpenAI
 import feedparser
-from supply_chain import BASE_NODES, SupplyNode
+from supply_chain import get_base_nodes_lazy, SupplyNode
 from maintenance_optimizer import optimize_schedule, OptimizedSchedule
 from quality_intelligence import generate_quality_report, QualityIntelligenceReport
 from carbon_tracker import generate_net_zero_report, NetZeroReport
@@ -293,7 +293,7 @@ def execute_live_news_risk_assessment() -> list:
     print(f"Total unique headlines aggregated: {len(seen)}")
 
     if not news_text:
-        return [n.model_dump() for n in BASE_NODES]
+        return [n.model_dump() for n in get_base_nodes_lazy()]
 
     prompt = f"""
 You are an EV Supply Chain Risk Analyst. Based STRICTLY on the following live news headlines from today,
@@ -316,7 +316,8 @@ Example format:
         response = get_openai_client().chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.2
+            temperature=0.2,
+            timeout=30
         )
         raw_response = response.choices[0].message.content
         clean_json = raw_response.replace("```json", "").replace("```", "").strip()
@@ -324,12 +325,15 @@ Example format:
         import re
         clean_json = re.sub(r"<think>.*?</think>", "", clean_json, flags=re.DOTALL).strip()
         risk_assessments = json.loads(clean_json)
+    except json.JSONDecodeError as e:
+        print(f"LLM News JSON parse failed: {e}")
+        return [{"error": "News analysis failed", "message": "LLM returned malformed data."}]
     except Exception as e:
-        print(f"LLM News analysis failed: {e}")
-        return [{"error": "News analysis failed", "message": "Using baseline risk scores."}]
+        print(f"Unexpected error during news analysis: {e}")
+        return [{"error": "News analysis failed", "message": "Internal server error."}]
 
     final_nodes = []
-    for node in BASE_NODES:
+    for node in get_base_nodes_lazy():
         assessment = risk_assessments.get(node.country, {"risk_score": 5.0, "justification": "News analysis inconclusive."})
         final_nodes.append(SupplyNode(
             entity_name=node.entity_name,
@@ -348,17 +352,21 @@ Example format:
     return [n.model_dump() for n in final_nodes]
 
 
-@app.get("/api/fleet-readiness", response_model=List[ReadinessResult])
+@app.get("/api/fleet-readiness")
 def get_fleet_readiness():
     results = [score_vehicle(v) for v in fleet_data]
     results.sort(key=lambda x: x.readiness_score, reverse=True)
-    return results
+    # Append INR cost estimate: battery at 15,000 INR/kWh is the Indian market baseline
+    return [
+        {"estimated_capex_inr": int(r.recommended_battery_kwh * 15000), **r.model_dump()}
+        for r in results
+    ]
 
 
 @app.get("/api/supply-chain")
 def get_supply_chain_nodes():
     """Feature 4: Returns supply chain nodes with baseline risk (no LLM needed)."""
-    return [n.model_dump() for n in BASE_NODES]
+    return [n.model_dump() for n in get_base_nodes_lazy()]
 
 
 @app.get("/api/maintenance-schedule")
@@ -426,6 +434,16 @@ TOOL_EXECUTORS = {
     "get_carbon_report": execute_get_carbon_report,
 }
 
+# Human-readable labels for each tool - shown when the LLM uses a tool
+TOOL_HUMAN_PHRASES = {
+    "get_fleet_health": "Pulling fleet health data...",
+    "get_anomalies": "Checking for thermal anomalies...",
+    "get_maintenance_schedule": "Loading maintenance schedule...",
+    "get_supply_chain_trace": "Tracing supply chain with live news...",
+    "get_quality_intelligence": "Analyzing manufacturing quality...",
+    "get_carbon_report": "Compiling carbon emissions report...",
+}
+
 
 def _fallback_tool(query_text: str) -> str | None:
     q = query_text.lower()
@@ -438,21 +456,33 @@ def _fallback_tool(query_text: str) -> str | None:
 @app.post("/api/apm-agent")
 def apm_agent(query: AgentQuery):
     function_name = None
+    llm_text = None
 
-    # Try LLM tool selection first
+    analyst_prompt = """You are a senior EV fleet data scientist at a major automotive company. You analyze fleet telemetry, supply chain data, manufacturing quality, and carbon emissions every day.
+
+Your job: when someone asks a question, pick the right data tool, then WRITE A CONCISE SUMMARY of what the data shows. Be specific. Reference actual numbers. Point out anomalies. Suggest actions if relevant.
+
+Style: Direct, no fluff, no AI disclaimers. You are a person, not a chatbot. Start sentences like 'Found 3 vehicles with thermal anomalies...' or 'Fleet SoH averages 98.2% with EV-003 showing elevated internal resistance...'
+
+Do NOT use emojis. Do NOT say 'As an AI'. Keep the summary to 3-5 sentences."""
+
+    # Step 1: LLM picks the right tool
     try:
         response = get_openai_client().chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
-                {"role": "system", "content": "You are an EV fleet management and supply chain intelligence assistant. Use the provided tools to answer queries about fleet health, anomalies, maintenance schedules, supply chain tracing, manufacturing quality (QMS/defects/drift), and carbon emissions (net zero/sustainability). Always use a tool. Pick the most relevant tool based on the user's query."},
+                {"role": "system", "content": analyst_prompt},
                 {"role": "user", "content": query.query}
             ],
             tools=tools,
-            tool_choice="auto"
+            tool_choice="auto",
+            timeout=15
         )
         message = response.choices[0].message
         if message.tool_calls:
             function_name = message.tool_calls[0].function.name
+        if message.content and message.content.strip():
+            llm_text = message.content.strip()
     except Exception:
         pass
 
@@ -460,27 +490,59 @@ def apm_agent(query: AgentQuery):
     if not function_name:
         function_name = _fallback_tool(query.query)
 
-    if function_name and function_name in TOOL_EXECUTORS:
-        try:
-            data_result = TOOL_EXECUTORS[function_name]()
-        except Exception as e:
-            return {
-                "agent_thought_process": f"Tool {function_name} failed: {str(e)}",
-                "results": []
-            }
-        if isinstance(data_result, list) and len(data_result) > 0 and "error" in data_result[0]:
-            return {
-                "agent_thought_process": f"Tool {function_name} completed with warning: {data_result[0]['message']}",
-                "results": []
-            }
+    if not function_name or function_name not in TOOL_EXECUTORS:
         return {
-            "agent_thought_process": f"LLM decided to use tool: {function_name}",
-            "results": data_result
+            "agent_thought_process": "Not sure what you're looking for. Try: 'Show fleet health', 'Check for thermal anomalies', 'Generate maintenance schedule', or 'Trace supply chain'.",
+            "results": []
         }
 
+    # Step 2: Execute the tool to get raw data
+    try:
+        data_result = TOOL_EXECUTORS[function_name]()
+    except Exception as e:
+        return {
+            "agent_thought_process": f"Could not complete the request: {str(e)}",
+            "results": []
+        }
+
+    if isinstance(data_result, list) and len(data_result) > 0 and isinstance(data_result[0], dict) and "error" in data_result[0]:
+        return {
+            "agent_thought_process": data_result[0].get("message", "Failed to fetch data."),
+            "results": []
+        }
+
+    # Step 3: Ask the LLM to analyze the actual data and write a natural summary
+    try:
+        data_preview = json.dumps(data_result[:10] if isinstance(data_result, list) and len(data_result) > 10 else data_result, indent=2)
+        # Truncate if too large
+        if len(data_preview) > 8000:
+            data_preview = data_preview[:8000] + "\n... [truncated]"
+
+        analysis_prompt = f"""The user asked: "{query.query}"
+
+Here is the raw data retrieved for you:
+
+{data_preview}
+
+Write a 3-5 sentence summary analyzing this data like a senior EV fleet data scientist. Call out specific numbers, flag anomalies, note trends, and suggest any actions. Be direct and personal — you are talking to a colleague."""
+
+        analysis_response = get_openai_client().chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": analysis_prompt}],
+            temperature=0.3,
+            timeout=20
+        )
+        thought = analysis_response.choices[0].message.content.strip()
+        # Clean any think blocks from reasoning models
+        import re
+        thought = re.sub(r"<think>.*?</think>", "", thought, flags=re.DOTALL).strip()
+    except Exception:
+        # If LLM analysis fails, fall back to a plain but human phrase
+        thought = llm_text or TOOL_HUMAN_PHRASES.get(function_name, f"Retrieved {function_name.replace('get_', '').replace('_', ' ')}.")
+
     return {
-        "agent_thought_process": "Could not determine which tool to use. Try: 'Show fleet health', 'Show anomalies', 'Generate maintenance schedule', or 'Trace supply chain'.",
-        "results": []
+        "agent_thought_process": thought,
+        "results": data_result
     }
 
 

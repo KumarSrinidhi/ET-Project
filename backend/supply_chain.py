@@ -1,5 +1,6 @@
 import requests
 import time
+from functools import lru_cache
 from pydantic import BaseModel
 from typing import List
 
@@ -81,5 +82,12 @@ def get_base_nodes() -> List[SupplyNode]:
         ))
     return nodes
 
-# Cache the coordinates so we don't hammer OSM on every query
-BASE_NODES = get_base_nodes()
+# Lazily initialize and cache coordinates so we don't hammer OSM or block server startup.
+# Module import is now instant — OSM calls happen only on first data access.
+@lru_cache(maxsize=1)
+def get_cached_base_nodes() -> List[SupplyNode]:
+    return get_base_nodes()
+
+
+def get_base_nodes_lazy() -> List[SupplyNode]:
+    return get_cached_base_nodes()

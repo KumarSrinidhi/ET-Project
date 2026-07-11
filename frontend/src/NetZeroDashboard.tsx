@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { fetchNetZeroReport } from './api';
 import type { NetZeroReport } from './api';
+import DashboardShell from './components/DashboardShell';
 
 export default function NetZeroDashboard() {
     const [data, setData] = useState<NetZeroReport | null>(null);
@@ -15,22 +16,18 @@ export default function NetZeroDashboard() {
             .finally(() => setLoading(false));
     }, []);
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <span className="ml-3 text-gray-500">Calculating carbon intelligence...</span>
-            </div>
-        );
-    }
+    return (
+      <DashboardShell loading={loading} error={error} loadingMessage="Calculating carbon intelligence...">
+        {data && <NetZeroContent data={data} activeTab={activeTab} setActiveTab={setActiveTab} />}
+      </DashboardShell>
+    );
+}
 
-    if (error || !data) {
-        return (
-            <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-700">Failed to load carbon tracker: {error}</p>
-            </div>
-        );
-    }
+function NetZeroContent({ data, activeTab, setActiveTab }: {
+  data: NetZeroReport;
+  activeTab: 'overview' | 'fleet' | 'supply_chain' | 'progress';
+  setActiveTab: (tab: 'overview' | 'fleet' | 'supply_chain' | 'progress') => void;
+}) {
 
     const { kpis, emission_sources, fleet_comparison, supply_chain_carbon, monthly_progress, scope_breakdown, recommendations } = data;
 
@@ -39,47 +36,48 @@ export default function NetZeroDashboard() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Net Zero Progress & Carbon Intelligence</h2>
+                    <h2 className="text-2xl font-bold text-gray-800 tracking-tight">Net Zero Progress & Carbon Intelligence</h2>
                     <p className="text-sm text-gray-500 mt-1">
-                        Scope 1/2/3 Tracking • EV vs ICE Comparison • Supply Chain Footprint • Target: Net Zero by {kpis.target_year}
+                        Scope 1/2/3 Tracking · EV vs ICE Comparison · Supply Chain Footprint · Target: Net Zero by {kpis.target_year}
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        ↓ {kpis.yoy_reduction_pct}% YoY
+                    <span className="text-xs font-mono font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                        {kpis.yoy_reduction_pct}% YoY
                     </span>
-                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                        {kpis.years_to_net_zero} years to Net Zero
+                    <span className="text-xs font-mono font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                        {kpis.years_to_net_zero} years to net zero
                     </span>
                 </div>
             </div>
 
             {/* Primary KPIs */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                <KPICard label="Total Emissions" value={`${kpis.total_emissions_tons_co2} t`} color="text-gray-800" subtitle="CO₂e/year" />
-                <KPICard label="Scope 1 (Direct)" value={`${kpis.scope_1_tons} t`} color="text-red-600" subtitle="Fleet + Facility" />
-                <KPICard label="Scope 2 (Energy)" value={`${kpis.scope_2_tons} t`} color="text-orange-600" subtitle="Purchased electricity" />
-                <KPICard label="Scope 3 (Chain)" value={`${kpis.scope_3_tons} t`} color="text-blue-700" subtitle="Value chain" />
-                <KPICard label="Avoided Emissions" value={`${kpis.avoided_emissions_tons} t`} color="text-blue-600" subtitle="EV vs ICE savings" />
-                <KPICard label="Carbon Intensity" value={`${kpis.carbon_intensity_g_per_km}`} color="text-blue-700" subtitle="gCO₂/km (EV fleet)" />
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                <KPICard label="Total Emissions" value={`${kpis.total_emissions_tons_co2} t`} subtitle="CO₂e/year" />
+                <KPICard label="Scope 1 (Direct)" value={`${kpis.scope_1_tons} t`} subtitle="Fleet + Facility" />
+                <KPICard label="Scope 2 (Energy)" value={`${kpis.scope_2_tons} t`} subtitle="Purchased electricity" />
+                <KPICard label="Scope 3 (Chain)" value={`${kpis.scope_3_tons} t`} subtitle="Value chain" />
+                <KPICard label="Avoided Emissions" value={`${kpis.avoided_emissions_tons} t`} subtitle="EV vs ICE savings" />
+                <KPICard label="Carbon Intensity" value={`${kpis.carbon_intensity_g_per_km}`} subtitle="Based on India blended grid (460 gCO₂/kWh)" />
             </div>
 
             {/* Scope Breakdown Visual */}
-            <div className="p-5 bg-white rounded-lg border border-gray-200 shadow-sm">
-                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Emission Scope Breakdown</h3>
-                <div className="flex items-center gap-4">
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
+                    <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Emission Scope Breakdown</h3>
+                </div>
+                <div className="p-5 space-y-3">
                     {Object.entries(scope_breakdown).map(([scope, tons], idx) => {
                         const total = Object.values(scope_breakdown).reduce((a: number, b: number) => a + b, 0);
                         const pct = (tons / total) * 100;
-                        const colors = ['bg-red-400', 'bg-orange-400', 'bg-blue-500'];
                         return (
-                            <div key={scope} className="flex-1">
-                                <div className="flex justify-between text-xs text-gray-600 mb-1">
+                            <div key={scope}>
+                                <div className="flex justify-between text-[11px] uppercase tracking-wider text-gray-400 font-medium mb-1.5">
                                     <span>{scope}</span>
-                                    <span className="font-bold">{(tons as number)} t ({pct.toFixed(1)}%)</span>
+                                    <span className="font-mono text-gray-700">{(tons as number)} t · <span className="text-gray-900 font-semibold">{pct.toFixed(1)}%</span></span>
                                 </div>
-                                <div className="w-full bg-gray-100 rounded-full h-6">
-                                    <div className={`h-6 rounded-full ${colors[idx]} transition-all`} style={{ width: `${pct}%` }} />
+                                <div className="w-full bg-gray-100 rounded-full h-2">
+                                    <div className="h-2 rounded-full bg-gray-800 transition-all" style={{ width: `${pct}%`, opacity: idx === 0 ? 1 : idx === 1 ? 0.6 : 0.3 }} />
                                 </div>
                             </div>
                         );
@@ -88,34 +86,20 @@ export default function NetZeroDashboard() {
             </div>
 
             {/* Secondary KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Renewable Energy</p>
-                    <p className="text-2xl font-bold text-blue-600">{kpis.renewable_energy_pct}%</p>
-                    <div className="w-full bg-gray-100 rounded-full h-2 mt-2">
-                        <div className="h-2 rounded-full bg-blue-500" style={{ width: `${kpis.renewable_energy_pct}%` }} />
-                    </div>
-                </div>
-                <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Fleet Electrified</p>
-                    <p className="text-2xl font-bold text-blue-700">{kpis.ev_fleet_pct}%</p>
-                    <div className="w-full bg-gray-100 rounded-full h-2 mt-2">
-                        <div className="h-2 rounded-full bg-blue-500" style={{ width: `${kpis.ev_fleet_pct}%` }} />
-                    </div>
-                </div>
-                <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Carbon Offsets</p>
-                    <p className="text-2xl font-bold text-gray-700">{kpis.offset_credits_tons} t</p>
-                    <p className="text-xs text-gray-500 mt-1">Purchased carbon credits</p>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <KPICard label="Renewable Energy" value={`${kpis.renewable_energy_pct}%`} subtitle="Procurement share" />
+                <KPICard label="Fleet Electrified" value={`${kpis.ev_fleet_pct}%`} subtitle="EV penetration" />
+                <KPICard label="Carbon Offsets" value={`${kpis.offset_credits_tons} t`} subtitle="Purchased credits" />
             </div>
 
             {/* Tab Navigation */}
             <div className="border-b border-gray-200">
-                <nav className="flex gap-6">
+                <nav className="flex gap-6" role="tablist" aria-label="Net Zero Dashboard Sections">
                     {(['overview', 'fleet', 'supply_chain', 'progress'] as const).map(tab => (
                         <button
                             key={tab}
+                            role="tab"
+                            aria-selected={activeTab === tab}
                             onClick={() => setActiveTab(tab)}
                             className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors capitalize ${activeTab === tab
                                     ? 'border-blue-600 text-blue-600'
@@ -132,34 +116,33 @@ export default function NetZeroDashboard() {
             {activeTab === 'overview' && (
                 <div className="space-y-6">
                     {/* Emission Sources */}
-                    <div className="p-5 bg-white rounded-lg border border-gray-200 shadow-sm">
-                        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">
-                            Emission Sources Detail
-                        </h3>
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
+                            <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Emission Sources Detail</h3>
+                        </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left text-gray-500">
-                                <thead className="bg-gray-50 text-gray-700 uppercase text-xs">
+                                <thead className="bg-gray-50/30 text-[11px] uppercase tracking-wider text-gray-400 font-medium">
                                     <tr>
-                                        <th className="px-3 py-2">Source</th>
-                                        <th className="px-3 py-2">Scope</th>
-                                        <th className="px-3 py-2">Category</th>
-                                        <th className="px-3 py-2">Emissions (kgCO₂)</th>
-                                        <th className="px-3 py-2">Description</th>
+                                        <th className="px-5 py-2.5">Source</th>
+                                        <th className="px-5 py-2.5">Scope</th>
+                                        <th className="px-5 py-2.5">Category</th>
+                                        <th className="px-5 py-2.5">Emissions (kgCO₂)</th>
+                                        <th className="px-5 py-2.5">Description</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="divide-y divide-gray-50">
                                     {emission_sources.map((source: { source_name: string; scope: string; category: string; emissions_kg_co2: number; description: string }, idx: number) => (
-                                        <tr key={idx} className="bg-white border-b hover:bg-gray-50">
-                                            <td className="px-3 py-2 font-medium text-gray-900">{source.source_name}</td>
-                                            <td className="px-3 py-2">
-                                                <span className={`px-2 py-0.5 text-xs font-medium rounded ${source.scope === 'Scope 1' ? 'bg-red-100 text-red-800' :
-                                                        source.scope === 'Scope 2' ? 'bg-orange-100 text-orange-800' :
-                                                            'bg-blue-100 text-blue-800'
-                                                    }`}>{source.scope}</span>
+                                        <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                                            <td className="px-5 py-3 font-medium text-gray-800">{source.source_name}</td>
+                                            <td className="px-5 py-3">
+                                                <span className="text-xs font-mono font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                                                    {source.scope}
+                                                </span>
                                             </td>
-                                            <td className="px-3 py-2 text-xs">{source.category}</td>
-                                            <td className="px-3 py-2 font-mono">{source.emissions_kg_co2.toLocaleString()}</td>
-                                            <td className="px-3 py-2 text-xs text-gray-500 max-w-xs">{source.description}</td>
+                                            <td className="px-5 py-3 text-xs text-gray-500">{source.category}</td>
+                                            <td className="px-5 py-3 font-mono text-xs text-gray-800">{source.emissions_kg_co2.toLocaleString()}</td>
+                                            <td className="px-5 py-3 text-xs text-gray-500 max-w-xs">{source.description}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -167,18 +150,18 @@ export default function NetZeroDashboard() {
                         </div>
                     </div>
 
-                    {/* Recommendations */}
-                    <div className="p-5 bg-white rounded-lg border border-gray-200 shadow-sm">
-                        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">
-                            AI-Generated Reduction Recommendations
-                        </h3>
-                        <div className="space-y-3">
+                    {/* Recommendations - Divided list */}
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
+                            <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Reduction Recommendations</h3>
+                        </div>
+                        <div className="divide-y divide-gray-50">
                             {recommendations.map((rec: string, idx: number) => (
-                                <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">
-                                        {idx + 1}
+                                <div key={idx} className="px-5 py-3.5 hover:bg-gray-50/50 transition-colors flex items-start gap-3">
+                                    <span className="flex-shrink-0 text-[11px] uppercase tracking-wider text-gray-400 font-mono font-medium w-6">
+                                        {String(idx + 1).padStart(2, '0')}
                                     </span>
-                                    <p className="text-sm text-gray-700">{rec}</p>
+                                    <p className="text-sm text-gray-700 leading-relaxed">{rec}</p>
                                 </div>
                             ))}
                         </div>
@@ -187,61 +170,60 @@ export default function NetZeroDashboard() {
             )}
 
             {activeTab === 'fleet' && (
-                <div className="p-5 bg-white rounded-lg border border-gray-200 shadow-sm">
-                    <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">
-                        EV vs ICE Fleet Emission Comparison
-                    </h3>
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
+                        <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">EV vs ICE Fleet Emission Comparison</h3>
+                    </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left text-gray-500">
-                            <thead className="bg-gray-50 text-gray-700 uppercase text-xs">
+                            <thead className="bg-gray-50/30 text-[11px] uppercase tracking-wider text-gray-400 font-medium">
                                 <tr>
-                                    <th className="px-3 py-2">Vehicle</th>
-                                    <th className="px-3 py-2">Annual km</th>
-                                    <th className="px-3 py-2">EV Emissions (kg)</th>
-                                    <th className="px-3 py-2">ICE Equivalent (kg)</th>
-                                    <th className="px-3 py-2">Avoided (kg)</th>
-                                    <th className="px-3 py-2">Savings %</th>
-                                    <th className="px-3 py-2">Energy Source</th>
+                                    <th className="px-5 py-2.5">Vehicle</th>
+                                    <th className="px-5 py-2.5">Annual km</th>
+                                    <th className="px-5 py-2.5">EV (kg)</th>
+                                    <th className="px-5 py-2.5">ICE (kg)</th>
+                                    <th className="px-5 py-2.5">Avoided (kg)</th>
+                                    <th className="px-5 py-2.5">Savings</th>
+                                    <th className="px-5 py-2.5">Energy Source</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="divide-y divide-gray-50">
                                 {fleet_comparison.map((vehicle: { vehicle_id: string; annual_km: number; ev_emissions_kg_co2_per_year: number; ice_equivalent_kg_co2_per_year: number; avoided_emissions_kg_co2: number; avoided_pct: number; energy_source: string }) => (
-                                    <tr key={vehicle.vehicle_id} className="bg-white border-b hover:bg-gray-50">
-                                        <td className="px-3 py-2 font-medium text-gray-900">{vehicle.vehicle_id}</td>
-                                        <td className="px-3 py-2 font-mono text-xs">{vehicle.annual_km.toLocaleString()}</td>
-                                        <td className="px-3 py-2 font-mono text-xs text-blue-700">{vehicle.ev_emissions_kg_co2_per_year.toLocaleString()}</td>
-                                        <td className="px-3 py-2 font-mono text-xs text-red-700">{vehicle.ice_equivalent_kg_co2_per_year.toLocaleString()}</td>
-                                        <td className="px-3 py-2 font-mono text-xs font-bold text-blue-600">{vehicle.avoided_emissions_kg_co2.toLocaleString()}</td>
-                                        <td className="px-3 py-2">
-                                            <span className={`px-2 py-0.5 text-xs font-bold rounded ${vehicle.avoided_pct > 60 ? 'bg-blue-100 text-blue-800' :
-                                                    vehicle.avoided_pct > 30 ? 'bg-yellow-100 text-yellow-800' :
-                                                        'bg-red-100 text-red-800'
-                                                }`}>{vehicle.avoided_pct}%</span>
+                                    <tr key={vehicle.vehicle_id} className="hover:bg-gray-50/50 transition-colors">
+                                        <td className="px-5 py-3 font-medium text-gray-800">{vehicle.vehicle_id}</td>
+                                        <td className="px-5 py-3 font-mono text-xs text-gray-800">{vehicle.annual_km.toLocaleString()}</td>
+                                        <td className="px-5 py-3 font-mono text-xs text-gray-800">{vehicle.ev_emissions_kg_co2_per_year.toLocaleString()}</td>
+                                        <td className="px-5 py-3 font-mono text-xs text-gray-500">{vehicle.ice_equivalent_kg_co2_per_year.toLocaleString()}</td>
+                                        <td className="px-5 py-3 font-mono text-xs font-semibold text-gray-900">{vehicle.avoided_emissions_kg_co2.toLocaleString()}</td>
+                                        <td className="px-5 py-3">
+                                            <span className={`text-xs font-mono font-medium px-2 py-0.5 rounded-full ${vehicle.avoided_pct > 60 ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                                                {vehicle.avoided_pct}%
+                                            </span>
                                         </td>
-                                        <td className="px-3 py-2 text-xs text-gray-500">{vehicle.energy_source}</td>
+                                        <td className="px-5 py-3 text-xs text-gray-500">{vehicle.energy_source}</td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
                     {/* Summary */}
-                    <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-100">
+                    <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/50">
                         <div className="grid grid-cols-3 gap-4 text-center">
                             <div>
-                                <p className="text-xs text-gray-500">Total EV Emissions</p>
-                                <p className="text-lg font-bold text-blue-700">
+                                <p className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Total EV Emissions</p>
+                                <p className="font-mono text-base font-semibold text-gray-900 mt-0.5">
                                     {(fleet_comparison.reduce((a: number, b: { ev_emissions_kg_co2_per_year: number }) => a + b.ev_emissions_kg_co2_per_year, 0) / 1000).toFixed(1)} t
                                 </p>
                             </div>
                             <div>
-                                <p className="text-xs text-gray-500">ICE Equivalent</p>
-                                <p className="text-lg font-bold text-red-700">
+                                <p className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">ICE Equivalent</p>
+                                <p className="font-mono text-base font-semibold text-gray-900 mt-0.5">
                                     {(fleet_comparison.reduce((a: number, b: { ice_equivalent_kg_co2_per_year: number }) => a + b.ice_equivalent_kg_co2_per_year, 0) / 1000).toFixed(1)} t
                                 </p>
                             </div>
                             <div>
-                                <p className="text-xs text-gray-500">Total Avoided</p>
-                                <p className="text-lg font-bold text-blue-600">
+                                <p className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Total Avoided</p>
+                                <p className="font-mono text-base font-semibold text-gray-900 mt-0.5">
                                     {(fleet_comparison.reduce((a: number, b: { avoided_emissions_kg_co2: number }) => a + b.avoided_emissions_kg_co2, 0) / 1000).toFixed(1)} t
                                 </p>
                             </div>
@@ -251,55 +233,59 @@ export default function NetZeroDashboard() {
             )}
 
             {activeTab === 'supply_chain' && (
-                <div className="p-5 bg-white rounded-lg border border-gray-200 shadow-sm">
-                    <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">
-                        Supply Chain Carbon Footprint (Scope 3)
-                    </h3>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left text-gray-500">
-                            <thead className="bg-gray-50 text-gray-700 uppercase text-xs">
-                                <tr>
-                                    <th className="px-3 py-2">Supplier</th>
-                                    <th className="px-3 py-2">Material</th>
-                                    <th className="px-3 py-2">Country</th>
-                                    <th className="px-3 py-2">Transport</th>
-                                    <th className="px-3 py-2">Distance (km)</th>
-                                    <th className="px-3 py-2">Production CO₂ (kg)</th>
-                                    <th className="px-3 py-2">Transport CO₂ (kg)</th>
-                                    <th className="px-3 py-2">Total CO₂ (kg)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {supply_chain_carbon.map((item: { supplier: string; material: string; country: string; transport_mode: string; transport_distance_km: number; production_emissions_kg_co2: number; transport_emissions_kg_co2: number; total_emissions_kg_co2: number; material_carbon_intensity_kg_co2_per_ton: number }, idx: number) => (
-                                    <tr key={idx} className="bg-white border-b hover:bg-gray-50">
-                                        <td className="px-3 py-2 font-medium text-gray-900">{item.supplier}</td>
-                                        <td className="px-3 py-2 text-xs">{item.material}</td>
-                                        <td className="px-3 py-2">{item.country}</td>
-                                        <td className="px-3 py-2 text-xs">{item.transport_mode}</td>
-                                        <td className="px-3 py-2 font-mono text-xs">{item.transport_distance_km.toLocaleString()}</td>
-                                        <td className="px-3 py-2 font-mono text-xs">{item.production_emissions_kg_co2.toLocaleString()}</td>
-                                        <td className="px-3 py-2 font-mono text-xs">{item.transport_emissions_kg_co2.toLocaleString()}</td>
-                                        <td className="px-3 py-2 font-mono text-xs font-bold text-red-700">{item.total_emissions_kg_co2.toLocaleString()}</td>
+                <div className="space-y-6">
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
+                            <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Supply Chain Carbon Footprint (Scope 3)</h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left text-gray-500">
+                                <thead className="bg-gray-50/30 text-[11px] uppercase tracking-wider text-gray-400 font-medium">
+                                    <tr>
+                                        <th className="px-5 py-2.5">Supplier</th>
+                                        <th className="px-5 py-2.5">Material</th>
+                                        <th className="px-5 py-2.5">Country</th>
+                                        <th className="px-5 py-2.5">Transport</th>
+                                        <th className="px-5 py-2.5">Distance (km)</th>
+                                        <th className="px-5 py-2.5">Production (kg)</th>
+                                        <th className="px-5 py-2.5">Transport (kg)</th>
+                                        <th className="px-5 py-2.5">Total (kg)</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {supply_chain_carbon.map((item: { supplier: string; material: string; country: string; transport_mode: string; transport_distance_km: number; production_emissions_kg_co2: number; transport_emissions_kg_co2: number; total_emissions_kg_co2: number; material_carbon_intensity_kg_co2_per_ton: number }, idx: number) => (
+                                        <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                                            <td className="px-5 py-3 font-medium text-gray-800">{item.supplier}</td>
+                                            <td className="px-5 py-3 text-xs text-gray-500">{item.material}</td>
+                                            <td className="px-5 py-3 text-xs text-gray-500">{item.country}</td>
+                                            <td className="px-5 py-3 text-xs text-gray-500">{item.transport_mode}</td>
+                                            <td className="px-5 py-3 font-mono text-xs text-gray-800">{item.transport_distance_km.toLocaleString()}</td>
+                                            <td className="px-5 py-3 font-mono text-xs text-gray-500">{item.production_emissions_kg_co2.toLocaleString()}</td>
+                                            <td className="px-5 py-3 font-mono text-xs text-gray-500">{item.transport_emissions_kg_co2.toLocaleString()}</td>
+                                            <td className="px-5 py-3 font-mono text-xs font-semibold text-gray-900">{item.total_emissions_kg_co2.toLocaleString()}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
+
                     {/* Carbon intensity bar chart */}
-                    <div className="mt-6">
-                        <h4 className="text-xs font-semibold text-gray-600 uppercase mb-3">Material Carbon Intensity (kgCO₂/ton)</h4>
-                        <div className="space-y-2">
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
+                            <h4 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Material Carbon Intensity (kgCO₂/ton)</h4>
+                        </div>
+                        <div className="p-5 space-y-3">
                             {supply_chain_carbon.map((item: { material: string; material_carbon_intensity_kg_co2_per_ton: number }, idx: number) => {
                                 const maxIntensity = Math.max(...supply_chain_carbon.map((s: { material_carbon_intensity_kg_co2_per_ton: number }) => s.material_carbon_intensity_kg_co2_per_ton));
                                 const pct = (item.material_carbon_intensity_kg_co2_per_ton / maxIntensity) * 100;
                                 return (
                                     <div key={idx} className="flex items-center gap-3">
-                                        <span className="text-xs text-gray-600 w-40 truncate">{item.material}</span>
-                                        <div className="flex-1 bg-gray-100 rounded-full h-4">
-                                            <div className="h-4 rounded-full bg-gradient-to-r from-orange-400 to-red-500 transition-all"
-                                                style={{ width: `${pct}%` }} />
+                                        <span className="text-xs text-gray-600 w-40 truncate font-medium">{item.material}</span>
+                                        <div className="flex-1 bg-gray-100 rounded-full h-2.5">
+                                            <div className="h-2.5 rounded-full bg-gray-800 transition-all" style={{ width: `${pct}%`, opacity: 0.4 + (pct / 200) }} />
                                         </div>
-                                        <span className="text-xs font-mono text-gray-700 w-16 text-right">
+                                        <span className="font-mono text-xs font-medium text-gray-900 w-20 text-right">
                                             {item.material_carbon_intensity_kg_co2_per_ton.toLocaleString()}
                                         </span>
                                     </div>
@@ -313,71 +299,73 @@ export default function NetZeroDashboard() {
             {activeTab === 'progress' && (
                 <div className="space-y-6">
                     {/* Monthly Progress Chart */}
-                    <div className="p-5 bg-white rounded-lg border border-gray-200 shadow-sm">
-                        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">
-                            Monthly Emissions vs Target Trajectory
-                        </h3>
-                        <div className="relative h-56 border border-gray-100 rounded bg-gray-50 p-4">
-                            <div className="absolute top-4 left-4 right-4 border-t-2 border-dashed border-gray-300" style={{ top: '10%' }}>
-                                <span className="absolute -top-4 right-0 text-[10px] text-gray-400">Baseline: {monthly_progress[0]?.baseline_emissions_tons_co2} t</span>
-                            </div>
-                            <div className="flex items-end h-full gap-2 pt-8 pb-6">
-                                {monthly_progress.map((month: { month: string; actual_emissions_tons_co2: number; target_emissions_tons_co2: number; baseline_emissions_tons_co2: number; on_track: boolean }, idx: number) => {
-                                    const maxVal = monthly_progress[0]?.baseline_emissions_tons_co2 || 120;
-                                    const actualH = (month.actual_emissions_tons_co2 / maxVal) * 100;
-                                    const targetH = (month.target_emissions_tons_co2 / maxVal) * 100;
-                                    return (
-                                        <div key={idx} className="flex-1 flex flex-col items-center gap-1 relative h-full justify-end">
-                                            <div className="absolute w-full border-t-2 border-blue-500"
-                                                style={{ bottom: `${targetH}%` }} />
-                                            <div
-                                                className={`w-full rounded-t ${month.on_track ? 'bg-blue-500' : 'bg-red-400'}`}
-                                                style={{ height: `${actualH}%` }}
-                                                title={`${month.month}: ${month.actual_emissions_tons_co2} t (target: ${month.target_emissions_tons_co2} t)`}
-                                            />
-                                            <span className="text-[9px] text-gray-400 -rotate-45 origin-top-left mt-1">
-                                                {month.month.split('-')[1]}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
+                            <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Monthly Emissions vs Target Trajectory</h3>
                         </div>
-                        <div className="flex gap-4 mt-3 text-xs text-gray-500">
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-500"></span> On Track</span>
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-400"></span> Above Target</span>
-                            <span className="flex items-center gap-1"><span className="w-6 border-t-2 border-blue-500"></span> Target Line</span>
+                        <div className="p-5">
+                            <div className="relative h-56 rounded-lg bg-gray-50/50 border border-gray-100 p-4">
+                                <div className="absolute top-4 left-4 right-4 border-t-2 border-dashed border-gray-300" style={{ top: '10%' }}>
+                                    <span className="absolute -top-4 right-0 text-[11px] text-gray-400 font-mono uppercase tracking-wider">Baseline {monthly_progress[0]?.baseline_emissions_tons_co2} t</span>
+                                </div>
+                                <div className="flex items-end h-full gap-2 pt-8 pb-6">
+                                    {monthly_progress.map((month: { month: string; actual_emissions_tons_co2: number; target_emissions_tons_co2: number; baseline_emissions_tons_co2: number; on_track: boolean }, idx: number) => {
+                                        const maxVal = monthly_progress[0]?.baseline_emissions_tons_co2 || 120;
+                                        const actualH = (month.actual_emissions_tons_co2 / maxVal) * 100;
+                                        const targetH = (month.target_emissions_tons_co2 / maxVal) * 100;
+                                        return (
+                                            <div key={idx} className="flex-1 flex flex-col items-center gap-1 relative h-full justify-end">
+                                                <div className="absolute w-full border-t-2 border-gray-800"
+                                                    style={{ bottom: `${targetH}%`, opacity: 0.4 }} />
+                                                <div
+                                                    className={`w-full rounded-t ${month.on_track ? 'bg-gray-800' : 'bg-red-500'}`}
+                                                    style={{ height: `${actualH}%`, opacity: month.on_track ? 0.8 : 1 }}
+                                                    title={`${month.month}: ${month.actual_emissions_tons_co2} t (target: ${month.target_emissions_tons_co2} t)`}
+                                                />
+                                                <span className="text-[9px] text-gray-400 -rotate-45 origin-top-left mt-1 font-mono">
+                                                    {month.month.split('-')[1]}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                            <div className="flex gap-4 mt-3 text-[11px] uppercase tracking-wider text-gray-400 font-medium">
+                                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-gray-800" style={{opacity: 0.8}} /> On Track</span>
+                                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-red-500" /> Above Target</span>
+                                <span className="flex items-center gap-1.5"><span className="w-5 border-t-2 border-gray-800" style={{opacity: 0.4}}></span> Target Line</span>
+                            </div>
                         </div>
                     </div>
 
                     {/* Monthly Data Table */}
-                    <div className="p-5 bg-white rounded-lg border border-gray-200 shadow-sm">
-                        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">
-                            Monthly Reduction Progress
-                        </h3>
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
+                            <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Monthly Reduction Progress</h3>
+                        </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left text-gray-500">
-                                <thead className="bg-gray-50 text-gray-700 uppercase text-xs">
+                                <thead className="bg-gray-50/30 text-[11px] uppercase tracking-wider text-gray-400 font-medium">
                                     <tr>
-                                        <th className="px-3 py-2">Month</th>
-                                        <th className="px-3 py-2">Actual (t CO₂)</th>
-                                        <th className="px-3 py-2">Target (t CO₂)</th>
-                                        <th className="px-3 py-2">Baseline (t CO₂)</th>
-                                        <th className="px-3 py-2">Reduction %</th>
-                                        <th className="px-3 py-2">Status</th>
+                                        <th className="px-5 py-2.5">Month</th>
+                                        <th className="px-5 py-2.5">Actual (t)</th>
+                                        <th className="px-5 py-2.5">Target (t)</th>
+                                        <th className="px-5 py-2.5">Baseline (t)</th>
+                                        <th className="px-5 py-2.5">Reduction</th>
+                                        <th className="px-5 py-2.5">Status</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="divide-y divide-gray-50">
                                     {monthly_progress.map((month: { month: string; actual_emissions_tons_co2: number; target_emissions_tons_co2: number; baseline_emissions_tons_co2: number; reduction_pct: number; on_track: boolean }) => (
-                                        <tr key={month.month} className="bg-white border-b hover:bg-gray-50">
-                                            <td className="px-3 py-2 font-medium text-gray-900">{month.month}</td>
-                                            <td className="px-3 py-2 font-mono">{month.actual_emissions_tons_co2}</td>
-                                            <td className="px-3 py-2 font-mono text-blue-600">{month.target_emissions_tons_co2}</td>
-                                            <td className="px-3 py-2 font-mono text-gray-400">{month.baseline_emissions_tons_co2}</td>
-                                            <td className="px-3 py-2 font-bold text-blue-700">{month.reduction_pct}%</td>
-                                            <td className="px-3 py-2">
-                                                <span className={`px-2 py-0.5 text-xs font-medium rounded ${month.on_track ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'}`}>
-                                                    {month.on_track ? 'ON TRACK' : 'BEHIND'}
+                                        <tr key={month.month} className="hover:bg-gray-50/50 transition-colors">
+                                            <td className="px-5 py-3 font-medium text-gray-800">{month.month}</td>
+                                            <td className="px-5 py-3 font-mono text-xs text-gray-800">{month.actual_emissions_tons_co2}</td>
+                                            <td className="px-5 py-3 font-mono text-xs text-gray-500">{month.target_emissions_tons_co2}</td>
+                                            <td className="px-5 py-3 font-mono text-xs text-gray-400">{month.baseline_emissions_tons_co2}</td>
+                                            <td className="px-5 py-3 font-mono text-xs font-semibold text-gray-900">{month.reduction_pct}%</td>
+                                            <td className="px-5 py-3">
+                                                <span className={`text-xs font-mono font-medium px-2 py-0.5 rounded-full ${month.on_track ? 'bg-gray-900 text-white' : 'bg-red-50 text-red-600'}`}>
+                                                    {month.on_track ? 'On Track' : 'Behind'}
                                                 </span>
                                             </td>
                                         </tr>
@@ -392,12 +380,14 @@ export default function NetZeroDashboard() {
     );
 }
 
-function KPICard({ label, value, color, subtitle }: { label: string; value: string | number; color: string; subtitle?: string }) {
+function KPICard({ label, value, subtitle }: { label: string; value: string | number; subtitle?: string }) {
     return (
-        <div className="p-3 bg-white rounded-lg border border-gray-200 shadow-sm text-center">
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">{label}</p>
-            <p className={`text-lg font-bold ${color}`}>{value}</p>
-            {subtitle && <p className="text-[10px] text-gray-400 mt-0.5">{subtitle}</p>}
+        <div className="bg-gray-50/80 rounded-xl p-5 text-center">
+            <p className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">{label}</p>
+            <p className="mt-2">
+                <span className="font-mono text-xl font-semibold text-gray-900 tracking-tight">{value}</span>
+            </p>
+            {subtitle && <p className="text-[10px] text-gray-500 mt-1.5 leading-tight">{subtitle}</p>}
         </div>
     );
 }

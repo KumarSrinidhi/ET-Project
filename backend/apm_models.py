@@ -118,6 +118,15 @@ def calculate_soh(telemetry: List[TelemetryPoint], vehicle_id: str) -> BatteryHe
     
     # Total degradation
     total_degradation_percent = (calendar_degradation + cycle_degradation + fast_charge_penalty) * 100
+
+    # Estimate current SoH before accelerator to determine if we're in the non-linear regime.
+    # Real Li-ion cells degrade faster near end-of-life due to lithium plating and SEI layer buildup.
+    estimated_soh = max(0, 100 - total_degradation_percent)
+    if estimated_soh < 85:
+        # Quadratic accelerator: degradation rate doubles every ~5% SoH drop below 85%
+        accel_factor = 1 + ((85 - estimated_soh) / 15) ** 2
+        total_degradation_percent *= accel_factor
+
     current_soh = max(0.0, 100.0 - total_degradation_percent)
     current_soh += random.uniform(-0.3, 0.3)  # Measurement noise
     

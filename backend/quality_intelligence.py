@@ -18,7 +18,6 @@ from enum import Enum
 import random
 import math
 from datetime import datetime, timedelta
-from supply_chain import BASE_NODES
 
 
 # ─── Domain Models ────────────────────────────────────────────────────────────
@@ -91,7 +90,7 @@ class QualityKPIs(BaseModel):
     overall_yield_pct: float
     first_pass_yield_pct: float
     defect_rate_ppm: float
-    scrap_cost_usd: float
+    scrap_cost_inr: float
     supplier_quality_index: float
     process_capability_cpk: float
     drift_alerts_active: int
@@ -427,7 +426,7 @@ def calculate_quality_kpis(
         overall_yield_pct=round(overall_yield, 2),
         first_pass_yield_pct=round(first_pass_yield, 2),
         defect_rate_ppm=round(defect_rate_ppm, 1),
-        scrap_cost_usd=round(scrap_cost, 2),
+        scrap_cost_inr=round(scrap_cost, 2),
         supplier_quality_index=round(supplier_quality, 1),
         process_capability_cpk=round(avg_cpk, 2),
         drift_alerts_active=drift_count,

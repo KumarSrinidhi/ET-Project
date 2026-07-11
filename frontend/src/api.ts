@@ -13,11 +13,26 @@ export interface ReadinessResult {
   tco_savings_pct: number;
   recommended_battery_kwh: number;
   recommended_chemistry: string;
+  estimated_capex_inr: number;
 }
 
-export const fetchFleetReadiness = async (): Promise<ReadinessResult[]> => {
-  const response = await axios.get<ReadinessResult[]>(`${BASE}/api/fleet-readiness`);
-  return response.data;
+export const fetchFleetReadiness = async (retries = 5): Promise<ReadinessResult[]> => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await axios.get<ReadinessResult[]>(`${BASE}/api/fleet-readiness`, { timeout: 10000 });
+      return response.data;
+    } catch (err: any) {
+      // If it's not a network/timeout error, fail immediately
+      if (err.response) throw err;
+      // If it's a timeout or connection refused (backend waking up), wait and retry
+      if (i < retries - 1) {
+        await new Promise(res => setTimeout(res, 1000 * (i + 1))); // 1s, 2s, 3s, 4s delays
+      } else {
+        throw err; // Final attempt failed
+      }
+    }
+  }
+  throw new Error("Max retries reached");
 };
 
 export interface BatteryHealthReport {
@@ -48,7 +63,7 @@ export interface ScheduledTask {
   technician_name: string;
   start_hour: number;
   end_hour: number;
-  estimated_cost_usd: number;
+  estimated_cost_inr: number;
   spare_parts_needed: string[];
   status: string;
 }
@@ -61,7 +76,7 @@ export interface OptimizedScheduleResponse {
     scheduled_tasks: number;
     overflow_tasks: number;
     delayed_tasks: number;
-    total_cost_usd: number;
+    total_cost_inr: number;
     critical_tasks_same_day_pct: number;
     avg_wait_hours: number;
     total_downtime_hours: number;
@@ -89,7 +104,7 @@ export interface QualityIntelligenceResponse {
     overall_yield_pct: number;
     first_pass_yield_pct: number;
     defect_rate_ppm: number;
-    scrap_cost_usd: number;
+    scrap_cost_inr: number;
     supplier_quality_index: number;
     process_capability_cpk: number;
     drift_alerts_active: number;

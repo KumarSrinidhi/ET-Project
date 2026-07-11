@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { fetchMaintenanceSchedule } from './api';
 import type { OptimizedScheduleResponse, ScheduledTask } from './api';
+import DashboardShell from './components/DashboardShell';
 
 const PRIORITY_COLORS: Record<string, string> = {
     critical: 'bg-red-500',
@@ -30,22 +31,14 @@ export default function MaintenanceDashboard() {
             .finally(() => setLoading(false));
     }, []);
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <span className="ml-3 text-gray-500">Optimizing maintenance schedule...</span>
-            </div>
-        );
-    }
+    return (
+      <DashboardShell loading={loading} error={error} loadingMessage="Optimizing maintenance schedule...">
+        {data && <MaintenanceContent data={data} />}
+      </DashboardShell>
+    );
+}
 
-    if (error || !data) {
-        return (
-            <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-700">Failed to load maintenance schedule: {error}</p>
-            </div>
-        );
-    }
+function MaintenanceContent({ data }: { data: OptimizedScheduleResponse }) {
 
     const { schedule, kpis, shift_date, constraints_summary } = data;
     const scheduledTasks = schedule.filter((t) => t.status === 'scheduled');
@@ -85,7 +78,7 @@ export default function MaintenanceDashboard() {
                 <KPICard label="Scheduled" value={kpis.scheduled_tasks} color="text-green-600" />
                 <KPICard label="Overflow" value={kpis.overflow_tasks} color="text-red-600" />
                 <KPICard label="Delayed (Parts)" value={kpis.delayed_tasks} color="text-amber-600" />
-                <KPICard label="Total Cost" value={`$${kpis.total_cost_usd.toLocaleString()}`} color="text-blue-700" />
+                <KPICard label="Total Cost" value={`₹${kpis.total_cost_inr.toLocaleString('en-IN')}`} color="text-blue-700" />
                 <KPICard label="Critical Same-Day" value={`${kpis.critical_tasks_same_day_pct}%`} color="text-green-700" />
             </div>
 
@@ -214,7 +207,7 @@ export default function MaintenanceDashboard() {
                                     <td className="px-3 py-2 text-xs">{task.bay_name}</td>
                                     <td className="px-3 py-2 text-xs">{task.technician_name}</td>
                                     <td className="px-3 py-2 text-xs font-mono">{task.start_hour}:00–{task.end_hour}:00</td>
-                                    <td className="px-3 py-2 text-xs">${task.estimated_cost_usd.toLocaleString()}</td>
+                                    <td className="px-3 py-2 text-xs">{(task as any).estimated_cost_inr != null ? `₹${(task as any).estimated_cost_inr.toLocaleString('en-IN')}` : '--'}</td>
                                     <td className="px-3 py-2 text-xs text-gray-400">{task.spare_parts_needed.join(', ') || '—'}</td>
                                 </tr>
                             ))}
