@@ -16,12 +16,6 @@ const PRIORITY_BADGE: Record<string, string> = {
     low: 'bg-blue-100 text-blue-800',
 };
 
-const STATUS_BADGE: Record<string, string> = {
-    scheduled: 'bg-green-100 text-green-800',
-    delayed_parts: 'bg-amber-100 text-amber-800',
-    overflow: 'bg-red-100 text-red-800',
-};
-
 const BAY_COLORS = ['bg-indigo-400', 'bg-emerald-400', 'bg-purple-400', 'bg-cyan-400'];
 
 export default function MaintenanceDashboard() {
