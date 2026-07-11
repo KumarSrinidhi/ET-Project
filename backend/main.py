@@ -1,10 +1,11 @@
 from typing import List
 import json
+import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env from backend/ directory
-load_dotenv(Path(__file__).resolve().parent / ".env")
+# Load .env from project root
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -12,7 +13,6 @@ import random
 from fastapi.middleware.cors import CORSMiddleware
 from apm_models import generate_fleet_telemetry, BatteryHealthReport
 from openai import OpenAI
-import httpx
 import feedparser
 from supply_chain import BASE_NODES, SupplyNode
 from maintenance_optimizer import optimize_schedule, OptimizedSchedule
@@ -27,7 +27,7 @@ client = None
 def get_openai_client():
     global client
     if client is None:
-        client = OpenAI(http_client=httpx.Client(verify=False))
+        client = OpenAI()
     return client
 
 tools = [
@@ -326,7 +326,7 @@ Example format:
         risk_assessments = json.loads(clean_json)
     except Exception as e:
         print(f"LLM News analysis failed: {e}")
-        risk_assessments = {}
+        return [{"error": "News analysis failed", "message": "Using baseline risk scores."}]
 
     final_nodes = []
     for node in BASE_NODES:
@@ -468,6 +468,11 @@ def apm_agent(query: AgentQuery):
                 "agent_thought_process": f"Tool {function_name} failed: {str(e)}",
                 "results": []
             }
+        if isinstance(data_result, list) and len(data_result) > 0 and "error" in data_result[0]:
+            return {
+                "agent_thought_process": f"Tool {function_name} completed with warning: {data_result[0]['message']}",
+                "results": []
+            }
         return {
             "agent_thought_process": f"LLM decided to use tool: {function_name}",
             "results": data_result
@@ -481,7 +486,7 @@ def apm_agent(query: AgentQuery):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[os.getenv("FRONTEND_URL", "http://localhost:5173")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

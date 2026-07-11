@@ -69,14 +69,14 @@ export default function NetZeroDashboard() {
                 <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Emission Scope Breakdown</h3>
                 <div className="flex items-center gap-4">
                     {Object.entries(scope_breakdown).map(([scope, tons], idx) => {
-                        const total = Object.values(scope_breakdown).reduce((a, b) => a + b, 0);
+                        const total = Object.values(scope_breakdown).reduce((a: number, b: number) => a + b, 0);
                         const pct = (tons / total) * 100;
                         const colors = ['bg-red-400', 'bg-orange-400', 'bg-purple-400'];
                         return (
                             <div key={scope} className="flex-1">
                                 <div className="flex justify-between text-xs text-gray-600 mb-1">
                                     <span>{scope}</span>
-                                    <span className="font-bold">{tons} t ({pct.toFixed(1)}%)</span>
+                                    <span className="font-bold">{(tons as number)} t ({pct.toFixed(1)}%)</span>
                                 </div>
                                 <div className="w-full bg-gray-100 rounded-full h-6">
                                     <div className={`h-6 rounded-full ${colors[idx]} transition-all`} style={{ width: `${pct}%` }} />
@@ -148,7 +148,7 @@ export default function NetZeroDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {emission_sources.map((source, idx) => (
+                                    {emission_sources.map((source: { source_name: string; scope: string; category: string; emissions_kg_co2: number; description: string }, idx: number) => (
                                         <tr key={idx} className="bg-white border-b hover:bg-gray-50">
                                             <td className="px-3 py-2 font-medium text-gray-900">{source.source_name}</td>
                                             <td className="px-3 py-2">
@@ -173,7 +173,7 @@ export default function NetZeroDashboard() {
                             AI-Generated Reduction Recommendations
                         </h3>
                         <div className="space-y-3">
-                            {recommendations.map((rec, idx) => (
+                            {recommendations.map((rec: string, idx: number) => (
                                 <div key={idx} className="flex items-start gap-3 p-3 bg-white rounded-lg border border-green-100">
                                     <span className="flex-shrink-0 w-6 h-6 rounded-full bg-green-500 text-white text-xs flex items-center justify-center font-bold">
                                         {idx + 1}
@@ -205,7 +205,7 @@ export default function NetZeroDashboard() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {fleet_comparison.map((vehicle) => (
+                                {fleet_comparison.map((vehicle: { vehicle_id: string; annual_km: number; ev_emissions_kg_co2_per_year: number; ice_equivalent_kg_co2_per_year: number; avoided_emissions_kg_co2: number; avoided_pct: number; energy_source: string }) => (
                                     <tr key={vehicle.vehicle_id} className="bg-white border-b hover:bg-gray-50">
                                         <td className="px-3 py-2 font-medium text-gray-900">{vehicle.vehicle_id}</td>
                                         <td className="px-3 py-2 font-mono text-xs">{vehicle.annual_km.toLocaleString()}</td>
@@ -230,19 +230,19 @@ export default function NetZeroDashboard() {
                             <div>
                                 <p className="text-xs text-gray-500">Total EV Emissions</p>
                                 <p className="text-lg font-bold text-green-700">
-                                    {(fleet_comparison.reduce((a, b) => a + b.ev_emissions_kg_co2_per_year, 0) / 1000).toFixed(1)} t
+                                    {(fleet_comparison.reduce((a: number, b: { ev_emissions_kg_co2_per_year: number }) => a + b.ev_emissions_kg_co2_per_year, 0) / 1000).toFixed(1)} t
                                 </p>
                             </div>
                             <div>
                                 <p className="text-xs text-gray-500">ICE Equivalent</p>
                                 <p className="text-lg font-bold text-red-700">
-                                    {(fleet_comparison.reduce((a, b) => a + b.ice_equivalent_kg_co2_per_year, 0) / 1000).toFixed(1)} t
+                                    {(fleet_comparison.reduce((a: number, b: { ice_equivalent_kg_co2_per_year: number }) => a + b.ice_equivalent_kg_co2_per_year, 0) / 1000).toFixed(1)} t
                                 </p>
                             </div>
                             <div>
                                 <p className="text-xs text-gray-500">Total Avoided</p>
                                 <p className="text-lg font-bold text-emerald-700">
-                                    {(fleet_comparison.reduce((a, b) => a + b.avoided_emissions_kg_co2, 0) / 1000).toFixed(1)} t
+                                    {(fleet_comparison.reduce((a: number, b: { avoided_emissions_kg_co2: number }) => a + b.avoided_emissions_kg_co2, 0) / 1000).toFixed(1)} t
                                 </p>
                             </div>
                         </div>
@@ -270,7 +270,7 @@ export default function NetZeroDashboard() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {supply_chain_carbon.map((item, idx) => (
+                                {supply_chain_carbon.map((item: { supplier: string; material: string; country: string; transport_mode: string; transport_distance_km: number; production_emissions_kg_co2: number; transport_emissions_kg_co2: number; total_emissions_kg_co2: number; material_carbon_intensity_kg_co2_per_ton: number }, idx: number) => (
                                     <tr key={idx} className="bg-white border-b hover:bg-gray-50">
                                         <td className="px-3 py-2 font-medium text-gray-900">{item.supplier}</td>
                                         <td className="px-3 py-2 text-xs">{item.material}</td>
@@ -289,8 +289,8 @@ export default function NetZeroDashboard() {
                     <div className="mt-6">
                         <h4 className="text-xs font-semibold text-gray-600 uppercase mb-3">Material Carbon Intensity (kgCO₂/ton)</h4>
                         <div className="space-y-2">
-                            {supply_chain_carbon.map((item, idx) => {
-                                const maxIntensity = Math.max(...supply_chain_carbon.map(s => s.material_carbon_intensity_kg_co2_per_ton));
+                            {supply_chain_carbon.map((item: { material: string; material_carbon_intensity_kg_co2_per_ton: number }, idx: number) => {
+                                const maxIntensity = Math.max(...supply_chain_carbon.map((s: { material_carbon_intensity_kg_co2_per_ton: number }) => s.material_carbon_intensity_kg_co2_per_ton));
                                 const pct = (item.material_carbon_intensity_kg_co2_per_ton / maxIntensity) * 100;
                                 return (
                                     <div key={idx} className="flex items-center gap-3">
@@ -324,7 +324,7 @@ export default function NetZeroDashboard() {
                             </div>
                             {/* Bars */}
                             <div className="flex items-end h-full gap-2 pt-8 pb-6">
-                                {monthly_progress.map((month, idx) => {
+                                {monthly_progress.map((month: { month: string; actual_emissions_tons_co2: number; target_emissions_tons_co2: number; baseline_emissions_tons_co2: number; on_track: boolean }, idx: number) => {
                                     const maxVal = monthly_progress[0]?.baseline_emissions_tons_co2 || 120;
                                     const actualH = (month.actual_emissions_tons_co2 / maxVal) * 100;
                                     const targetH = (month.target_emissions_tons_co2 / maxVal) * 100;
@@ -372,7 +372,7 @@ export default function NetZeroDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {monthly_progress.map((month) => (
+                                    {monthly_progress.map((month: { month: string; actual_emissions_tons_co2: number; target_emissions_tons_co2: number; baseline_emissions_tons_co2: number; reduction_pct: number; on_track: boolean }) => (
                                         <tr key={month.month} className="bg-white border-b hover:bg-gray-50">
                                             <td className="px-3 py-2 font-medium text-gray-900">{month.month}</td>
                                             <td className="px-3 py-2 font-mono">{month.actual_emissions_tons_co2}</td>

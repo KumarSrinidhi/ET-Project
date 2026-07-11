@@ -51,7 +51,7 @@ export default function App() {
       setAgentData(result);
 
       // Route frontend display based on LLM tool choice
-      if (result.results.length > 0 && result.results[0].bay_id !== undefined) {
+      if (result.results.length > 0 && result.results[0].task_id !== undefined) {
         setScheduleData(result.results);
         setMapData(null);
       } else if (result.results.length > 0 && result.results[0].latitude !== undefined) {
