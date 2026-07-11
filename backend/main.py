@@ -280,28 +280,45 @@ RSS_FEEDS = [
 ]
 
 def execute_live_news_risk_assessment() -> list:
-    """Scrapes live RSS feeds from 12 sources and uses LLM to dynamically score risk."""
+    """Scrapes live RSS feeds from 12 sources and uses LLM to dynamically score risk.
+    Cached for 5 minutes so repeated agent calls don't re-hit the feeds."""
     import json
 
-    print(f"Fetching live news from {len(RSS_FEEDS)} RSS feeds...")
-    all_entries = []
-    citations = []  # Track every source article so we can show the citation chain
-    for url in RSS_FEEDS:
-        try:
-            feed = feedparser.parse(url)
-            for entry in feed.entries[:3]:
-                title = entry.get("title", "").strip()
-                if title:
-                    citations.append({
-                        "title": title,
-                        "url": entry.get("link", ""),
-                        "source": url,
-                        "published": entry.get("published", ""),
-                    })
-            all_entries.extend(feed.entries[:3])
-            print(f"  OK: {url} ({len(feed.entries)} articles)")
-        except Exception as e:
-            print(f"  FAIL: {url} - {e}")
+    # ── 5-minute news cache ────────────────────────────────────────────────
+    global _news_cache
+    now = time.time()
+    if _news_cache and (now - _news_cache["fetched_at"]) < 300:
+        age = int(now - _news_cache["fetched_at"])
+        print(f"[news cache] HIT ({age}s old, {len(_news_cache['entries'])} articles)")
+        # Re-use cached data, but re-run the LLM portion with the current query
+        all_entries = _news_cache["entries"]
+        citations = _news_cache["citations"]
+    else:
+        print(f"Fetching live news from {len(RSS_FEEDS)} RSS feeds...")
+        all_entries = []
+        citations = []
+        for url in RSS_FEEDS:
+            try:
+                feed = feedparser.parse(url)
+                for entry in feed.entries[:3]:
+                    title = entry.get("title", "").strip()
+                    if title:
+                        citations.append({
+                            "title": title,
+                            "url": entry.get("link", ""),
+                            "source": url,
+                            "published": entry.get("published", ""),
+                        })
+                all_entries.extend(feed.entries[:3])
+                print(f"  OK: {url} ({len(feed.entries)} articles)")
+            except Exception as e:
+                print(f"  FAIL: {url} - {e}")
+        _news_cache = {
+            "entries": all_entries,
+            "citations": citations,
+            "fetched_at": now,
+        }
+        print(f"[news cache] MISS — populated with {len(citations)} articles")
 
     news_text = ""
     seen = set()
@@ -411,8 +428,28 @@ def get_fleet_readiness():
 
 @app.get("/api/supply-chain")
 def get_supply_chain_nodes():
-    """Feature 4: Returns supply chain nodes with baseline risk (no LLM needed)."""
-    return [n.model_dump() for n in get_base_nodes_lazy()]
+    """Feature 4: Returns supply chain nodes with live news risk scoring.
+    Tries the full LLM news analysis pipeline first; falls back to baseline
+    nodes with a clear 'baseline' marker if the LLM is unavailable."""
+    try:
+        result = execute_live_news_risk_assessment()
+        # If the news tool returned a {nodes, citations} dict, unwrap it
+        if isinstance(result, dict) and "nodes" in result:
+            return result["nodes"]
+        # If it returned an error list, fall through to baseline
+        if isinstance(result, list) and len(result) > 0 and isinstance(result[0], dict) and "error" in result[0]:
+            raise RuntimeError(result[0].get("message", "News analysis failed"))
+        return result
+    except Exception as e:
+        # Graceful degradation — never return the 'Awaiting...' placeholder
+        baseline_nodes = [n.model_dump() for n in get_base_nodes_lazy()]
+        for n in baseline_nodes:
+            if n.get("risk_justification") == "Awaiting live news analysis...":
+                n["risk_justification"] = (
+                    f"Baseline 5.0/10. Live news analysis unavailable "
+                    f"({str(e)[:60]}). Run APM Agent > 'Trace supply chain' for live data."
+                )
+        return baseline_nodes
 
 
 @app.get("/api/maintenance-schedule")
@@ -577,8 +614,6 @@ def submit_maintenance_approval(req: MaintenanceSubmitRequest):
     """Submit a maintenance task for approval. Auto-approves if cost < threshold."""
     approval = submit_for_approval(req.task_id, req.vehicle_id, req.task_type,
                                     req.cost_inr, req.reason, req.requested_by)
-    log_action(req.requested_by, "maintenance", "submit_approval", approval.request_id,
-               {"cost_inr": req.cost_inr, "vehicle_id": req.vehicle_id})
     return {
         "approval": approval.model_dump(),
         "auto_approved": approval.approved_by == "auto_threshold",

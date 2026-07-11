@@ -655,7 +655,7 @@ function OperationsPanel() {
                         <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Audit Log (Role-Gated)</h3>
                         <a href={exportAuditLogUrl('admin')} target="_blank" rel="noreferrer"
                             className="text-[11px] uppercase tracking-wider text-gray-700 font-medium hover:text-gray-900 underline">
-                            Export as PDF
+                            Open Print Report
                         </a>
                     </div>
                     <div className="divide-y divide-gray-50 max-h-96 overflow-y-auto">

@@ -43,19 +43,28 @@ FALLBACK_COORDS = {
 }
 
 def fetch_real_coordinates(entity_name: str, country: str, search_query: str) -> tuple[float, float]:
-    """Hits OpenStreetMap Nominatim API for real lat/lon, with hardcoded fallback."""
+    """Hits OpenStreetMap Nominatim API for real lat/lon, with hardcoded fallback.
+    Nominatim blocks requests without a Referer header (volunteer-run servers,
+    see osm.wiki/Blocked). We always send one, plus a descriptive User-Agent."""
     # Try live fetch first
     url = "https://nominatim.openstreetmap.org/search"
     params = {"q": search_query, "format": "json", "limit": 1}
-    headers = {"User-Agent": "EV-Hackathon-Demo/1.0 (contact@hackathon.dev)"}
+    headers = {
+        # Identifies the application (required by OSM tile usage policy)
+        "User-Agent": "EV-Asset-Intelligence-Platform/1.0 (hackathon contact@evplatform.io)",
+        # Required by Nominatim — their policy blocks requests with no Referer
+        "Referer": "https://evplatform.io/dashboard",
+        "Accept": "application/json",
+    }
 
     try:
-        response = requests.get(url, params=params, headers=headers, timeout=3)
+        response = requests.get(url, params=params, headers=headers, timeout=5)
+        response.raise_for_status()
         data = response.json()
         if data:
             return float(data[0]["lat"]), float(data[0]["lon"])
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"OSM lookup failed for {entity_name}: {type(e).__name__}")
 
     # Fallback to hardcoded coordinates
     return FALLBACK_COORDS.get(entity_name, (0.0, 0.0))
