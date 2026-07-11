@@ -11,13 +11,25 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import random
 from fastapi.middleware.cors import CORSMiddleware
-from apm_models import generate_fleet_telemetry, BatteryHealthReport
+from apm_models import generate_fleet_telemetry, BatteryHealthReport, generate_ev_telemetry
 from openai import OpenAI
 import feedparser
 from supply_chain import get_base_nodes_lazy, SupplyNode
 from maintenance_optimizer import optimize_schedule, OptimizedSchedule
-from quality_intelligence import generate_quality_report, QualityIntelligenceReport
+from quality_intelligence import generate_quality_report, QualityIntelligenceReport, generate_process_data
 from carbon_tracker import generate_net_zero_report, NetZeroReport
+from commodity_feed import get_all_prices, get_price, estimate_battery_cost_inr
+from analytics import (
+    shap_for_cpk, estimate_routing_confidence, forecast_soh_curve,
+    forecast_thermal_anomalies, predict_replacement_cost, simulate_carbon_scenario,
+)
+from operations import (
+    get_all_depots, get_depot_by_id, get_depot_comparison,
+    can, get_role_permissions, log_action,
+    get_audit_log, export_audit_log_html,
+    submit_for_approval, decide_approval, get_pending_approvals, get_completed_approvals,
+    APPROVAL_THRESHOLD_INR, UserRole,
+)
 
 
 app = FastAPI()
@@ -273,10 +285,20 @@ def execute_live_news_risk_assessment() -> list:
 
     print(f"Fetching live news from {len(RSS_FEEDS)} RSS feeds...")
     all_entries = []
+    citations = []  # Track every source article so we can show the citation chain
     for url in RSS_FEEDS:
         try:
             feed = feedparser.parse(url)
-            all_entries.extend(feed.entries[:3])  # 3 articles per source = ~36 total
+            for entry in feed.entries[:3]:
+                title = entry.get("title", "").strip()
+                if title:
+                    citations.append({
+                        "title": title,
+                        "url": entry.get("link", ""),
+                        "source": url,
+                        "published": entry.get("published", ""),
+                    })
+            all_entries.extend(feed.entries[:3])
             print(f"  OK: {url} ({len(feed.entries)} articles)")
         except Exception as e:
             print(f"  FAIL: {url} - {e}")
@@ -287,13 +309,16 @@ def execute_live_news_risk_assessment() -> list:
         title = entry.get("title", "").strip()
         if title and title not in seen:
             seen.add(title)
-            summary = entry.get("summary", "")[:200]  # Cap summary length
+            summary = entry.get("summary", "")[:200]
             news_text += f"- {title}. {summary}\n"
 
     print(f"Total unique headlines aggregated: {len(seen)}")
 
     if not news_text:
-        return [n.model_dump() for n in get_base_nodes_lazy()]
+        baseline_nodes = [n.model_dump() for n in get_base_nodes_lazy()]
+        for n in baseline_nodes:
+            n["citations"] = []
+        return baseline_nodes
 
     prompt = f"""
 You are an EV Supply Chain Risk Analyst. Based STRICTLY on the following live news headlines from today,
@@ -304,11 +329,12 @@ If there are strikes, export bans, conflicts, or trade restrictions, increase th
 LIVE NEWS:
 {news_text}
 
-Respond ONLY with a valid JSON object mapping the country name to a dictionary containing "risk_score" (float) and "justification" (short string).
+Respond ONLY with a valid JSON object mapping the country name to a dictionary containing "risk_score" (float), "justification" (short string), and "citation_index" (integer — which headline number in the list above most directly supports this assessment, 1-indexed; use 0 if no specific headline applies).
+
 Example format:
 {{
-    "Chile": {{"risk_score": 8.5, "justification": "Major lithium miner strike announced today."}},
-    "DRC": {{"risk_score": 4.0, "justification": "No major news today."}}
+    "Chile": {{"risk_score": 8.5, "justification": "Major lithium miner strike announced today.", "citation_index": 3}},
+    "DRC": {{"risk_score": 4.0, "justification": "No major news today.", "citation_index": 0}}
 }}
 """
 
@@ -321,7 +347,6 @@ Example format:
         )
         raw_response = response.choices[0].message.content
         clean_json = raw_response.replace("```json", "").replace("```", "").strip()
-        # Strip any <think>...</think> blocks from reasoning models
         import re
         clean_json = re.sub(r"<think>.*?</think>", "", clean_json, flags=re.DOTALL).strip()
         risk_assessments = json.loads(clean_json)
@@ -334,7 +359,22 @@ Example format:
 
     final_nodes = []
     for node in get_base_nodes_lazy():
-        assessment = risk_assessments.get(node.country, {"risk_score": 5.0, "justification": "News analysis inconclusive."})
+        assessment = risk_assessments.get(node.country, {
+            "risk_score": 5.0,
+            "justification": "News analysis inconclusive.",
+            "citation_index": 0
+        })
+        # Attach citation chain: which news article drove this score
+        cit_idx = int(assessment.get("citation_index", 0)) - 1  # convert to 0-indexed
+        node_citations = []
+        if 0 <= cit_idx < len(citations):
+            node_citations = [citations[cit_idx]]
+        elif cit_idx == -1:  # explicit "no specific headline"
+            node_citations = []
+        else:
+            # Show first 2 citations as general context
+            node_citations = citations[:2]
+
         final_nodes.append(SupplyNode(
             entity_name=node.entity_name,
             tier=node.tier,
@@ -349,7 +389,13 @@ Example format:
             criticality=node.criticality,
         ))
 
-    return [n.model_dump() for n in final_nodes]
+    # Return nodes with citations as a dict wrapper
+    result = {
+        "nodes": [n.model_dump() for n in final_nodes],
+        "citations": citations[:20],  # Top 20 articles referenced
+        "total_articles_analyzed": len(citations),
+    }
+    return result
 
 
 @app.get("/api/fleet-readiness")
@@ -388,6 +434,176 @@ def get_carbon_tracker_endpoint():
     """Feature 6: Net Zero Progress & Carbon Intelligence Tracker."""
     report = generate_net_zero_report()
     return report.model_dump()
+
+
+# ─── Trust & Explainability Endpoints ────────────────────────────────────────
+
+@app.get("/api/shap/cpk")
+def get_shap_for_cpk():
+    """SHAP-style per-parameter contribution to overall Cpk score."""
+    params = generate_process_data()
+    return shap_for_cpk(params)
+
+
+@app.get("/api/forecast/thermal/{vehicle_id}")
+def get_thermal_forecast(vehicle_id: str):
+    """7-day thermal anomaly forecast using rolling Z-score (Isolation Forest equivalent)."""
+    telemetry = generate_ev_telemetry(vehicle_id, days=120)
+    days_data = [t.model_dump() for t in telemetry]
+    return forecast_thermal_anomalies(days_data)
+
+
+@app.get("/api/forecast/rul/{vehicle_id}")
+def get_rul_forecast(vehicle_id: str):
+    """365-day SoH curve with confidence band for one vehicle."""
+    fleet = generate_fleet_telemetry()
+    health = fleet.get(vehicle_id)
+    if not health:
+        return {"error": f"Vehicle {vehicle_id} not found"}
+    return forecast_soh_curve(health.current_soh, health.degradation_rate_per_day)
+
+
+@app.post("/api/maintenance/cost-prediction/{vehicle_id}")
+def get_cost_prediction(vehicle_id: str):
+    """Compare replace-now vs replace-in-6-months cost scenarios."""
+    fleet = generate_fleet_telemetry()
+    health = fleet.get(vehicle_id)
+    if not health:
+        return {"error": f"Vehicle {vehicle_id} not found"}
+    cost = estimate_battery_cost_inr(100, health.chemistry)["total_battery_cost_inr"]
+    return predict_replacement_cost(vehicle_id, health.current_soh, health.degradation_rate_per_day, cost)
+
+
+# ─── What-If Carbon Simulator ───────────────────────────────────────────────
+
+class WhatIfRequest(BaseModel):
+    ev_penetration_pct: float
+    renewable_energy_pct: float
+    scope_3_reduction_pct: float
+
+@app.post("/api/carbon/simulate")
+def post_carbon_simulate(req: WhatIfRequest):
+    """Simulate 'what if' changes to EV penetration, renewables, and Scope 3."""
+    report = generate_net_zero_report()
+    return simulate_carbon_scenario(
+        report.kpis.model_dump(),
+        req.ev_penetration_pct,
+        req.renewable_energy_pct,
+        req.scope_3_reduction_pct,
+    )
+
+
+# ─── Commodity Feed Endpoints ────────────────────────────────────────────────
+
+@app.get("/api/commodities")
+def get_commodities():
+    """Live BSE/MCX commodity prices for battery materials."""
+    return {"prices": [p.model_dump() for p in get_all_prices()], "count": len(get_all_prices())}
+
+
+@app.get("/api/commodities/battery-cost")
+def get_battery_cost_endpoint(kwh: float = 100, chemistry: str = "NMC 811"):
+    """Live battery cost in INR based on current commodity prices."""
+    return estimate_battery_cost_inr(kwh, chemistry)
+
+
+# ─── Operations Endpoints ───────────────────────────────────────────────────
+
+@app.get("/api/depots")
+def get_depots_endpoint():
+    """All fleet depots with comparison metrics."""
+    return get_depot_comparison()
+
+
+@app.get("/api/depots/{depot_id}")
+def get_depot_endpoint(depot_id: str):
+    """Single depot details."""
+    d = get_depot_by_id(depot_id)
+    if not d:
+        return {"error": "Depot not found"}
+    return d.model_dump()
+
+
+class RoleCheckRequest(BaseModel):
+    role: str
+    action: str
+
+@app.post("/api/permissions/check")
+def check_permission(req: RoleCheckRequest):
+    """Check if a role has permission to perform an action."""
+    return {
+        "role": req.role,
+        "action": req.action,
+        "allowed": can(req.role, req.action),
+        "all_permissions": get_role_permissions(req.role),
+    }
+
+
+@app.get("/api/audit-log")
+def get_audit_log_endpoint(role: str = "admin", limit: int = 50):
+    """Recent audit log entries. Role-gated."""
+    return {
+        "role": role,
+        "can_view": can(role, "view_audit_log"),
+        "entries": [e.model_dump() for e in get_audit_log(role, limit)],
+    }
+
+
+@app.get("/api/audit-log/export")
+def export_audit_log_endpoint(role: str = "admin"):
+    """Export audit log as a printable HTML page (can be saved as PDF via browser)."""
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(content=export_audit_log_html(role))
+
+
+# ─── Approval Workflow Endpoints ─────────────────────────────────────────────
+
+class ApprovalDecisionRequest(BaseModel):
+    approved: bool
+    decided_by: str
+    role: str
+    reason: str = ""
+
+class MaintenanceSubmitRequest(BaseModel):
+    task_id: str
+    vehicle_id: str
+    task_type: str
+    cost_inr: float
+    reason: str
+    requested_by: str = "system"
+
+@app.post("/api/maintenance/submit-for-approval")
+def submit_maintenance_approval(req: MaintenanceSubmitRequest):
+    """Submit a maintenance task for approval. Auto-approves if cost < threshold."""
+    approval = submit_for_approval(req.task_id, req.vehicle_id, req.task_type,
+                                    req.cost_inr, req.reason, req.requested_by)
+    log_action(req.requested_by, "maintenance", "submit_approval", approval.request_id,
+               {"cost_inr": req.cost_inr, "vehicle_id": req.vehicle_id})
+    return {
+        "approval": approval.model_dump(),
+        "auto_approved": approval.approved_by == "auto_threshold",
+        "threshold_inr": APPROVAL_THRESHOLD_INR,
+    }
+
+
+@app.get("/api/maintenance/pending-approvals")
+def get_pending_approvals_endpoint(role: str = "maintenance"):
+    """Pending maintenance approvals. Role-gated."""
+    if not can(role, "view_maintenance"):
+        return {"error": "Access denied"}
+    return {
+        "pending": [a.model_dump() for a in get_pending_approvals()],
+        "threshold_inr": APPROVAL_THRESHOLD_INR,
+    }
+
+
+@app.post("/api/maintenance/decide-approval/{request_id}")
+def decide_approval_endpoint(request_id: str, req: ApprovalDecisionRequest):
+    """Approve or reject a pending maintenance task."""
+    result = decide_approval(request_id, req.approved, req.decided_by, req.role, req.reason)
+    if not result:
+        return {"error": "Request not found or access denied"}
+    return result.model_dump()
 
 
 TOOL_KEYWORD_MAP = {
@@ -456,37 +672,66 @@ def _fallback_tool(query_text: str) -> str | None:
 @app.post("/api/apm-agent")
 def apm_agent(query: AgentQuery):
     function_name = None
-    llm_text = None
 
-    analyst_prompt = """You are a senior EV fleet data scientist at a major automotive company. You analyze fleet telemetry, supply chain data, manufacturing quality, and carbon emissions every day.
+    system_prompt = """You are a strict data-routing function. You have NO personality.
+DO NOT act human. DO NOT generate data, vehicle stats, or analysis.
+Your ONLY job is to read the user's input and select the most relevant tool to fetch the actual data.
+Do not add conversational filler."""
 
-Your job: when someone asks a question, pick the right data tool, then WRITE A CONCISE SUMMARY of what the data shows. Be specific. Reference actual numbers. Point out anomalies. Suggest actions if relevant.
-
-Style: Direct, no fluff, no AI disclaimers. You are a person, not a chatbot. Start sentences like 'Found 3 vehicles with thermal anomalies...' or 'Fleet SoH averages 98.2% with EV-003 showing elevated internal resistance...'
-
-Do NOT use emojis. Do NOT say 'As an AI'. Keep the summary to 3-5 sentences."""
-
-    # Step 1: LLM picks the right tool
+    # Step 1: LLM picks the right tool (forced — even "hi" must trigger a tool)
     try:
         response = get_openai_client().chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
-                {"role": "system", "content": analyst_prompt},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": query.query}
             ],
             tools=tools,
-            tool_choice="auto",
+            tool_choice="required",
             timeout=15
         )
         message = response.choices[0].message
         if message.tool_calls:
-            function_name = message.tool_calls[0].function.name
-        if message.content and message.content.strip():
-            llm_text = message.content.strip()
+            tool_call = message.tool_calls[0]
+            function_name = tool_call.function.name
+
+            # Map tool names to clean, non-robotic UI text
+            display_text = {
+                "get_fleet_health": "Retrieving fleet battery health and degradation metrics...",
+                "get_anomalies": "Filtering for thermal anomalies and critical alerts...",
+                "get_maintenance_schedule": "Calculating optimized maintenance schedule...",
+                "get_supply_chain_trace": "Fetching live supply chain risk and geospatial data...",
+                "get_quality_intelligence": "Running EWMA/CUSUM drift analysis on manufacturing data...",
+                "get_carbon_report": "Aggregating Scope 1, 2, and 3 carbon emissions..."
+            }.get(function_name, f"Executing {function_name}...")
+
+            if function_name in TOOL_EXECUTORS:
+                try:
+                    data_result = TOOL_EXECUTORS[function_name]()
+                except Exception as e:
+                    return {
+                        "agent_thought_process": f"Could not complete the request: {str(e)}",
+                        "results": []
+                    }
+            else:
+                data_result = []
+
+            if isinstance(data_result, list) and len(data_result) > 0 and isinstance(data_result[0], dict) and "error" in data_result[0]:
+                return {
+                    "agent_thought_process": data_result[0].get("message", "Failed to fetch data."),
+                    "routing_confidence": estimate_routing_confidence(query.query, function_name),
+                    "results": []
+                }
+
+            return {
+                "agent_thought_process": display_text,
+                "routing_confidence": estimate_routing_confidence(query.query, function_name),
+                "results": data_result
+            }
     except Exception:
         pass
 
-    # Fallback: keyword matching if LLM failed or didn't pick a tool
+    # Fallback: keyword matching if LLM is unavailable
     if not function_name:
         function_name = _fallback_tool(query.query)
 
@@ -496,7 +741,7 @@ Do NOT use emojis. Do NOT say 'As an AI'. Keep the summary to 3-5 sentences."""
             "results": []
         }
 
-    # Step 2: Execute the tool to get raw data
+    # Execute the fallback-selected tool
     try:
         data_result = TOOL_EXECUTORS[function_name]()
     except Exception as e:
@@ -508,40 +753,22 @@ Do NOT use emojis. Do NOT say 'As an AI'. Keep the summary to 3-5 sentences."""
     if isinstance(data_result, list) and len(data_result) > 0 and isinstance(data_result[0], dict) and "error" in data_result[0]:
         return {
             "agent_thought_process": data_result[0].get("message", "Failed to fetch data."),
+            "routing_confidence": estimate_routing_confidence(query.query, function_name),
             "results": []
         }
 
-    # Step 3: Ask the LLM to analyze the actual data and write a natural summary
-    try:
-        data_preview = json.dumps(data_result[:10] if isinstance(data_result, list) and len(data_result) > 10 else data_result, indent=2)
-        # Truncate if too large
-        if len(data_preview) > 8000:
-            data_preview = data_preview[:8000] + "\n... [truncated]"
-
-        analysis_prompt = f"""The user asked: "{query.query}"
-
-Here is the raw data retrieved for you:
-
-{data_preview}
-
-Write a 3-5 sentence summary analyzing this data like a senior EV fleet data scientist. Call out specific numbers, flag anomalies, note trends, and suggest any actions. Be direct and personal — you are talking to a colleague."""
-
-        analysis_response = get_openai_client().chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": analysis_prompt}],
-            temperature=0.3,
-            timeout=20
-        )
-        thought = analysis_response.choices[0].message.content.strip()
-        # Clean any think blocks from reasoning models
-        import re
-        thought = re.sub(r"<think>.*?</think>", "", thought, flags=re.DOTALL).strip()
-    except Exception:
-        # If LLM analysis fails, fall back to a plain but human phrase
-        thought = llm_text or TOOL_HUMAN_PHRASES.get(function_name, f"Retrieved {function_name.replace('get_', '').replace('_', ' ')}.")
+    display_text = {
+        "get_fleet_health": "Retrieving fleet battery health and degradation metrics...",
+        "get_anomalies": "Filtering for thermal anomalies and critical alerts...",
+        "get_maintenance_schedule": "Calculating optimized maintenance schedule...",
+        "get_supply_chain_trace": "Fetching live supply chain risk and geospatial data...",
+        "get_quality_intelligence": "Running EWMA/CUSUM drift analysis on manufacturing data...",
+        "get_carbon_report": "Aggregating Scope 1, 2, and 3 carbon emissions..."
+    }.get(function_name, f"Executing {function_name}...")
 
     return {
-        "agent_thought_process": thought,
+        "agent_thought_process": display_text,
+        "routing_confidence": estimate_routing_confidence(query.query, function_name),
         "results": data_result
     }
 

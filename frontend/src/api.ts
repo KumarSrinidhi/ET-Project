@@ -45,6 +45,7 @@ export interface BatteryHealthReport {
 
 export interface ApmAgentResponse {
   agent_thought_process: string;
+  routing_confidence?: number;
   results: any[];
 }
 
@@ -242,4 +243,233 @@ export interface SupplyChainNode {
 export const fetchSupplyChain = async (): Promise<SupplyChainNode[]> => {
   const response = await axios.get<SupplyChainNode[]>(`${BASE}/api/supply-chain`);
   return response.data;
+};
+
+// ─── News-driven Supply Chain Risk (returns dict with citations) ────────────
+
+export interface NewsCitation {
+  title: string;
+  url: string;
+  source: string;
+  published: string;
+}
+
+export interface SupplyChainTraceResponse {
+  nodes: SupplyChainNode[];
+  citations: NewsCitation[];
+  total_articles_analyzed: number;
+}
+
+// ─── Commodity Feed ─────────────────────────────────────────────────────────
+
+export interface CommodityPrice {
+  material: string;
+  symbol: string;
+  price_inr_per_kg: number;
+  change_pct_24h: number;
+  last_updated: string;
+  source: string;
+  unit: string;
+}
+
+export interface BatteryCostBreakdown {
+  chemistry: string;
+  kwh: number;
+  raw_material_cost_inr: number;
+  processing_margin_inr: number;
+  total_battery_cost_inr: number;
+  cost_per_kwh_inr: number;
+  breakdown: { material: string; kg_required: number; price_inr_per_kg: number; cost_inr: number }[];
+  priced_at: string;
+}
+
+export const fetchCommodities = async (): Promise<{ prices: CommodityPrice[]; count: number }> => {
+  const r = await axios.get(`${BASE}/api/commodities`);
+  return r.data;
+};
+
+export const fetchBatteryCost = async (kwh: number = 100, chemistry: string = "NMC 811"): Promise<BatteryCostBreakdown> => {
+  const r = await axios.get(`${BASE}/api/commodities/battery-cost`, { params: { kwh, chemistry } });
+  return r.data;
+};
+
+// ─── Trust & Explainability ─────────────────────────────────────────────────
+
+export interface ShapContribution {
+  parameter: string;
+  stage: string;
+  current_value: number;
+  target_value: number;
+  distance_from_target_pct: number;
+  shap_value: number;
+  is_drifting: boolean;
+}
+
+export interface ShapResult {
+  baseline_cpk: number;
+  current_cpk: number;
+  driving_factors: ShapContribution[];
+  all_contributions: ShapContribution[];
+  interpretation: string;
+}
+
+export const fetchShapForCpk = async (): Promise<ShapResult> => {
+  const r = await axios.get(`${BASE}/api/shap/cpk`);
+  return r.data;
+};
+
+export interface ThermalPrediction {
+  day_offset: number;
+  date: string;
+  projected_temp_c: number;
+  z_score: number;
+  anomaly_likely: boolean;
+}
+
+export interface ThermalForecast {
+  predictions: ThermalPrediction[];
+  high_risk_days: number[];
+  model: string;
+  confidence: string;
+}
+
+export const fetchThermalForecast = async (vehicleId: string): Promise<ThermalForecast> => {
+  const r = await axios.get(`${BASE}/api/forecast/thermal/${vehicleId}`);
+  return r.data;
+};
+
+export interface SohForecastPoint {
+  day: number;
+  date: string;
+  soh: number;
+  lower_bound: number;
+  upper_bound: number;
+}
+
+export interface RulForecast {
+  forecast: SohForecastPoint[];
+  end_of_life_day: number | null;
+  end_of_life_estimate: string;
+  warning: string;
+}
+
+export const fetchRulForecast = async (vehicleId: string): Promise<RulForecast> => {
+  const r = await axios.get(`${BASE}/api/forecast/rul/${vehicleId}`);
+  return r.data;
+};
+
+export interface CostPrediction {
+  vehicle_id: string;
+  current_soh: number;
+  projected_soh_180d: number;
+  failure_probability_180d: number;
+  battery_cost_inr: number;
+  scenarios: {
+    replace_now: { cost_inr: number; risk: string };
+    replace_in_6_months: { cost_inr: number; risk: string };
+    do_nothing: { expected_emergency_cost_inr: number; risk: string };
+  };
+  recommendation: string;
+  estimated_savings_inr: number;
+}
+
+export const fetchCostPrediction = async (vehicleId: string): Promise<CostPrediction> => {
+  const r = await axios.post(`${BASE}/api/maintenance/cost-prediction/${vehicleId}`);
+  return r.data.results;
+};
+
+// ─── What-If Carbon Simulator ───────────────────────────────────────────────
+
+export interface CarbonScenario {
+  scenario: { ev_penetration_pct: number; renewable_energy_pct: number; scope_3_reduction_pct: number };
+  baseline: { total_tons_co2: number; scope_1_tons: number; scope_2_tons: number; scope_3_tons: number; years_to_net_zero: number };
+  simulated: { total_tons_co2: number; scope_1_tons: number; scope_2_tons: number; scope_3_tons: number; years_to_net_zero: number; reduction_vs_baseline_pct: number };
+}
+
+export const simulateCarbon = async (ev: number, renewable: number, scope3: number): Promise<CarbonScenario> => {
+  const r = await axios.post(`${BASE}/api/carbon/simulate`, {
+    ev_penetration_pct: ev,
+    renewable_energy_pct: renewable,
+    scope_3_reduction_pct: scope3,
+  });
+  return r.data;
+};
+
+// ─── Operations: Depots, RBAC, Audit Log, Approvals ─────────────────────────
+
+export interface Depot {
+  depot_id: string;
+  name: string;
+  city: string;
+  state: string;
+  vehicle_count: number;
+  region: string;
+  primary_use: string;
+  manager: string;
+}
+
+export interface DepotComparisonRow extends Depot {
+  avg_soh: number;
+  active_anomalies: number;
+  monthly_cost_inr: number;
+}
+
+export interface DepotComparison {
+  depots: DepotComparisonRow[];
+  summary: { total_vehicles: number; best_performer: string; needs_attention: string; total_monthly_cost_inr: number };
+}
+
+export const fetchDepotComparison = async (): Promise<DepotComparison> => {
+  const r = await axios.get(`${BASE}/api/depots`);
+  return r.data;
+};
+
+export interface AuditEntry {
+  entry_id: string;
+  timestamp: string;
+  user: string;
+  role: string;
+  action: string;
+  resource: string;
+  details: Record<string, any>;
+  ip_address: string;
+}
+
+export const fetchAuditLog = async (role: string = "admin"): Promise<{ can_view: boolean; entries: AuditEntry[] }> => {
+  const r = await axios.get(`${BASE}/api/audit-log`, { params: { role } });
+  return { can_view: r.data.can_view, entries: r.data.entries };
+};
+
+export const exportAuditLogUrl = (role: string = "admin") => `${BASE}/api/audit-log/export?role=${role}`;
+
+export interface ApprovalRequest {
+  request_id: string;
+  task_id: string;
+  vehicle_id: string;
+  task_type: string;
+  estimated_cost_inr: number;
+  requested_by: string;
+  requested_at: string;
+  status: "pending" | "approved" | "rejected";
+  approved_by: string | null;
+  approved_at: string | null;
+  rejection_reason: string | null;
+  reason: string;
+}
+
+export const submitApproval = async (req: { task_id: string; vehicle_id: string; task_type: string; cost_inr: number; reason: string; requested_by?: string }): Promise<{ approval: ApprovalRequest; auto_approved: boolean; threshold_inr: number }> => {
+  const r = await axios.post(`${BASE}/api/maintenance/submit-for-approval`, req);
+  return r.data;
+};
+
+export const fetchPendingApprovals = async (role: string = "maintenance"): Promise<{ pending: ApprovalRequest[]; threshold_inr: number }> => {
+  const r = await axios.get(`${BASE}/api/maintenance/pending-approvals`, { params: { role } });
+  return r.data;
+};
+
+export const decideApproval = async (requestId: string, approved: boolean, decidedBy: string, role: string, reason: string = ""): Promise<ApprovalRequest> => {
+  const r = await axios.post(`${BASE}/api/maintenance/decide-approval/${requestId}`, {
+    approved, decided_by: decidedBy, role, reason,
+  });
+  return r.data;
 };

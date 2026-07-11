@@ -8,6 +8,7 @@ interface ApmAgentViewProps {
 
 interface AgentResponse {
   agent_thought_process: string;
+  routing_confidence?: number;
   results: any[];
 }
 
@@ -26,11 +27,16 @@ export default function ApmAgentView({ queryApmAgent }: ApmAgentViewProps) {
       setAgentData(result);
 
       // Route display based on result shape
-      if (result.results.length > 0 && result.results[0].task_id !== undefined) {
-        setScheduleData(result.results);
+      const r = result.results as any;
+      if (Array.isArray(r) && r.length > 0 && r[0].task_id !== undefined) {
+        setScheduleData(r);
         setMapData(null);
-      } else if (result.results.length > 0 && result.results[0].latitude !== undefined) {
-        setMapData(result.results);
+      } else if (r && Array.isArray(r.nodes)) {
+        // Supply chain tool returns { nodes, citations, total_articles_analyzed }
+        setMapData(r.nodes);
+        setScheduleData(null);
+      } else if (Array.isArray(r) && r.length > 0 && r[0].latitude !== undefined) {
+        setMapData(r);
         setScheduleData(null);
       } else {
         setScheduleData(null);
@@ -89,8 +95,13 @@ export default function ApmAgentView({ queryApmAgent }: ApmAgentViewProps) {
 
         {agentData && (
           <div>
-            <div className="mb-4 p-4 bg-gray-50 border-l-4 border-blue-500 text-sm text-gray-700 italic">
+            <div className="mb-4 p-4 bg-gray-50 border-l-4 border-blue-500 text-sm text-gray-700 italic flex items-center justify-between gap-3">
               <strong className="font-bold not-italic text-gray-900">{agentData.agent_thought_process}</strong>
+              {typeof agentData.routing_confidence === 'number' && (
+                <span className="flex-shrink-0 text-[11px] uppercase tracking-wider text-gray-400 font-medium">
+                  Routing confidence: <span className="font-mono text-gray-900 ml-1">{Math.round(agentData.routing_confidence * 100)}%</span>
+                </span>
+              )}
             </div>
 
             {/* Fleet Health / Anomalies table */}

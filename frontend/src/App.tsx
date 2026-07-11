@@ -5,6 +5,7 @@ import L from 'leaflet';
 import ErrorBoundary from './components/ErrorBoundary';
 import ApmAgentView from './components/ApmAgentView';
 import FleetReadinessView from './components/FleetReadinessView';
+import IntelligenceView from './components/IntelligenceView';
 import MaintenanceDashboard from './MaintenanceDashboard';
 import QualityDashboard from './QualityDashboard';
 import NetZeroDashboard from './NetZeroDashboard';
@@ -18,7 +19,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-type ActiveView = 'readiness' | 'apm' | 'maintenance' | 'supply_chain' | 'quality' | 'carbon';
+type ActiveView = 'readiness' | 'apm' | 'maintenance' | 'supply_chain' | 'quality' | 'carbon' | 'intelligence';
 
 export default function App() {
   const [data, setData] = useState<ReadinessResult[]>([]);
@@ -74,6 +75,7 @@ export default function App() {
     { key: 'supply_chain', label: '4. Supply Chain' },
     { key: 'quality', label: '5. Quality' },
     { key: 'carbon', label: '6. Net Zero' },
+    { key: 'intelligence', label: '7. Intelligence' },
   ];
 
   return (
@@ -146,6 +148,13 @@ export default function App() {
         {activeView === 'carbon' && (
           <ErrorBoundary>
             <NetZeroDashboard />
+          </ErrorBoundary>
+        )}
+
+        {/* FEATURE 7: INTELLIGENCE (Commodity, SHAP, Forecast, Simulator, Operations) */}
+        {activeView === 'intelligence' && (
+          <ErrorBoundary>
+            <IntelligenceView />
           </ErrorBoundary>
         )}
 
