@@ -24,7 +24,7 @@ export default function QualityDashboard() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 <span className="ml-3 text-gray-500">Analyzing manufacturing quality data...</span>
             </div>
         );
@@ -65,7 +65,7 @@ export default function QualityDashboard() {
                 <KPICard label="Defect Rate" value={`${kpis.defect_rate_ppm.toFixed(0)} PPM`} color="text-orange-600" />
                 <KPICard label="Scrap Cost" value={`$${kpis.scrap_cost_usd.toLocaleString()}`} color="text-red-600" />
                 <KPICard label="Supplier QI" value={`${kpis.supplier_quality_index}`} color="text-blue-700" />
-                <KPICard label="Process Cpk" value={`${kpis.process_capability_cpk}`} color="text-purple-700" />
+                <KPICard label="Process Cpk" value={`${kpis.process_capability_cpk}`} color="text-blue-600" />
                 <KPICard label="Drift Alerts" value={`${kpis.drift_alerts_active}`} color="text-red-600" />
                 <KPICard label="Batches at Risk" value={`${kpis.batches_at_risk}`} color="text-amber-600" />
             </div>
@@ -78,7 +78,7 @@ export default function QualityDashboard() {
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors capitalize ${activeTab === tab
-                                    ? 'border-purple-600 text-purple-700'
+                                    ? 'border-blue-600 text-blue-600'
                                     : 'border-transparent text-gray-500 hover:text-gray-700'
                                 }`}
                         >
@@ -165,7 +165,7 @@ export default function QualityDashboard() {
                                             <td className="px-3 py-2">
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-16 bg-gray-200 rounded-full h-2">
-                                                        <div className={`h-2 rounded-full ${supplier.avg_quality_score > 90 ? 'bg-green-500' : supplier.avg_quality_score > 70 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                                        <div className={`h-2 rounded-full ${supplier.avg_quality_score > 90 ? 'bg-blue-500' : supplier.avg_quality_score > 70 ? 'bg-yellow-500' : 'bg-red-500'}`}
                                                             style={{ width: `${supplier.avg_quality_score}%` }} />
                                                     </div>
                                                     <span className="text-xs">{supplier.avg_quality_score}</span>
@@ -186,17 +186,15 @@ export default function QualityDashboard() {
                         <div key={chartName} className="p-5 bg-white rounded-lg border border-gray-200 shadow-sm">
                             <h3 className="text-sm font-semibold text-gray-700 mb-4">{chartName}</h3>
                             <div className="relative h-48 border border-gray-100 rounded bg-gray-50 p-4">
-                                {/* Control limits visualization */}
-                                <div className="absolute inset-x-4 top-4 flex justify-between text-[10px] text-red-400">
+                                <div className="absolute inset-x-4 top-4 flex justify-between text-[10px] text-red-500">
                                     <span>UCL: {(points as any[])[0]?.ucl}</span>
                                 </div>
-                                <div className="absolute inset-x-4 bottom-4 flex justify-between text-[10px] text-red-400">
+                                <div className="absolute inset-x-4 bottom-4 flex justify-between text-[10px] text-red-500">
                                     <span>LCL: {(points as any[])[0]?.lcl}</span>
                                 </div>
-                                <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 flex justify-between text-[10px] text-green-600">
+                                <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 flex justify-between text-[10px] text-blue-600">
                                     <span>CL: {(points as any[])[0]?.center_line}</span>
                                 </div>
-                                {/* Data points as bars */}
                                 <div className="flex items-end h-full gap-[2px] pt-6 pb-6">
                                     {(points as any[]).map((point: any, idx: number) => {
                                         const range = point.ucl - point.lcl;
@@ -204,7 +202,7 @@ export default function QualityDashboard() {
                                         return (
                                             <div
                                                 key={idx}
-                                                className={`flex-1 rounded-t ${point.out_of_control ? 'bg-red-500' : 'bg-purple-400'}`}
+                                                className={`flex-1 rounded-t ${point.out_of_control ? 'bg-red-500' : 'bg-blue-500'}`}
                                                 style={{ height: `${normalized * 100}%` }}
                                                 title={`${point.timestamp}: ${point.value} ${point.out_of_control ? '(OUT OF CONTROL)' : ''}`}
                                             />
@@ -213,7 +211,7 @@ export default function QualityDashboard() {
                                 </div>
                             </div>
                             <div className="flex gap-4 mt-2 text-xs text-gray-500">
-                                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-purple-400"></span> In Control</span>
+                                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-500"></span> In Control</span>
                                 <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-500"></span> Out of Control</span>
                                 <span>{(points as any[]).filter((p: any) => p.out_of_control).length} violations detected</span>
                             </div>
@@ -278,7 +276,7 @@ export default function QualityDashboard() {
                         </h3>
                         <div className="grid gap-4">
                             {defect_predictions.map((pred, idx) => (
-                                <div key={idx} className="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
+                                <div key={idx} className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
                                     <div className="flex items-start justify-between">
                                         <div>
                                             <div className="flex items-center gap-2 mb-1">
