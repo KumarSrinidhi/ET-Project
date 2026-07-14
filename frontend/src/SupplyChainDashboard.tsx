@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { fetchSupplyChain } from './api';
 import type { SupplyChainNode } from './api';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import { CommodityPriceWidget } from './components/CommodityPriceWidget';
 
 export default function SupplyChainDashboard() {
     const [nodes, setNodes] = useState<SupplyChainNode[]>([]);
@@ -74,6 +75,11 @@ export default function SupplyChainDashboard() {
                         <span className="font-mono text-xl font-semibold text-gray-900 tracking-tight">{tier3Count}</span>
                     </p>
                 </div>
+            </div>
+
+            {/* Commodity Price Feed */}
+            <div className="mb-6">
+                <CommodityPriceWidget />
             </div>
 
             {/* Main Content Grid: Map + Risk Register */}

@@ -118,21 +118,16 @@ class QualityIntelligenceReport(BaseModel):
 # ─── Process Parameter Definitions ───────────────────────────────────────────
 
 PROCESS_PARAMS = [
-    {"name": "Coating Thickness", "stage": ProcessStage.ELECTRODE_COATING, "target": 85.0, "ucl": 92.0, "lcl": 78.0, "unit": "μm"},
-    {"name": "Coating Speed", "stage": ProcessStage.ELECTRODE_COATING, "target": 15.0, "ucl": 18.0, "lcl": 12.0, "unit": "m/min"},
-    {"name": "Slurry Viscosity", "stage": ProcessStage.ELECTRODE_COATING, "target": 3500.0, "ucl": 4200.0, "lcl": 2800.0, "unit": "mPa·s"},
-    {"name": "Drying Temperature", "stage": ProcessStage.ELECTRODE_COATING, "target": 130.0, "ucl": 140.0, "lcl": 120.0, "unit": "°C"},
-    {"name": "Stacking Alignment", "stage": ProcessStage.CELL_ASSEMBLY, "target": 0.05, "ucl": 0.15, "lcl": -0.05, "unit": "mm offset"},
-    {"name": "Tab Weld Current", "stage": ProcessStage.CELL_ASSEMBLY, "target": 8.5, "ucl": 9.5, "lcl": 7.5, "unit": "kA"},
-    {"name": "Electrolyte Volume", "stage": ProcessStage.ELECTROLYTE_FILLING, "target": 450.0, "ucl": 470.0, "lcl": 430.0, "unit": "mL"},
-    {"name": "Vacuum Level", "stage": ProcessStage.ELECTROLYTE_FILLING, "target": -95.0, "ucl": -90.0, "lcl": -100.0, "unit": "kPa"},
-    {"name": "Formation Voltage", "stage": ProcessStage.FORMATION_CYCLING, "target": 4.20, "ucl": 4.25, "lcl": 4.15, "unit": "V"},
-    {"name": "Initial Capacity", "stage": ProcessStage.FORMATION_CYCLING, "target": 65.0, "ucl": 70.0, "lcl": 60.0, "unit": "Ah"},
-    {"name": "Torque - Module Bolts", "stage": ProcessStage.MODULE_ASSEMBLY, "target": 25.0, "ucl": 28.0, "lcl": 22.0, "unit": "N·m"},
-    {"name": "Thermal Pad Compression", "stage": ProcessStage.MODULE_ASSEMBLY, "target": 1.5, "ucl": 2.0, "lcl": 1.0, "unit": "mm"},
-    {"name": "Coolant Flow Rate", "stage": ProcessStage.PACK_INTEGRATION, "target": 12.0, "ucl": 14.0, "lcl": 10.0, "unit": "L/min"},
-    {"name": "Insulation Resistance", "stage": ProcessStage.FINAL_TEST, "target": 500.0, "ucl": 1000.0, "lcl": 100.0, "unit": "MΩ"},
-    {"name": "Pack Voltage Spread", "stage": ProcessStage.FINAL_TEST, "target": 0.02, "ucl": 0.05, "lcl": 0.0, "unit": "V"},
+    {"name": "Coating Thickness", "stage": ProcessStage.ELECTRODE_COATING, "target": 192.5, "ucl": 195.0, "lcl": 190.0, "unit": "μm"},
+    {"name": "Drying Temperature", "stage": ProcessStage.ELECTRODE_COATING, "target": 137.5, "ucl": 140.0, "lcl": 135.0, "unit": "°C"},
+    {"name": "Drying Time", "stage": ProcessStage.ELECTRODE_COATING, "target": 125.0, "ucl": 130.0, "lcl": 120.0, "unit": "s"},
+    {"name": "Calendering Pressure", "stage": ProcessStage.ELECTRODE_COATING, "target": 17.5, "ucl": 20.0, "lcl": 15.0, "unit": "MPa"},
+    {"name": "Electrolyte Volume", "stage": ProcessStage.ELECTROLYTE_FILLING, "target": 460.0, "ucl": 470.0, "lcl": 450.0, "unit": "mL"},
+    {"name": "Formation Cycle Count", "stage": ProcessStage.FORMATION_CYCLING, "target": 4.0, "ucl": 5.0, "lcl": 3.0, "unit": "cycles"},
+    {"name": "Ambient Humidity", "stage": ProcessStage.ELECTRODE_COATING, "target": 35.0, "ucl": 40.0, "lcl": 30.0, "unit": "%"},
+    {"name": "Slurry Viscosity", "stage": ProcessStage.ELECTRODE_COATING, "target": 4500.0, "ucl": 5000.0, "lcl": 4000.0, "unit": "mPa·s"},
+    {"name": "Electrode Density", "stage": ProcessStage.ELECTRODE_COATING, "target": 2.50, "ucl": 2.60, "lcl": 2.40, "unit": "g/cc"},
+    {"name": "Tab Welding Power", "stage": ProcessStage.CELL_ASSEMBLY, "target": 2100.0, "ucl": 2200.0, "lcl": 2000.0, "unit": "W"},
 ]
 
 
@@ -351,10 +346,10 @@ def generate_spc_charts(seed: int = 42) -> dict:
     charts = {}
 
     key_params = [
-        ("Coating Thickness", ProcessStage.ELECTRODE_COATING.value, 85.0, 92.0, 78.0),
-        ("Formation Voltage", ProcessStage.FORMATION_CYCLING.value, 4.20, 4.25, 4.15),
-        ("Initial Capacity", ProcessStage.FORMATION_CYCLING.value, 65.0, 70.0, 60.0),
-        ("Coolant Flow Rate", ProcessStage.PACK_INTEGRATION.value, 12.0, 14.0, 10.0),
+        ("Coating Thickness", ProcessStage.ELECTRODE_COATING.value, 192.5, 195.0, 190.0),
+        ("Drying Temperature", ProcessStage.ELECTRODE_COATING.value, 137.5, 140.0, 135.0),
+        ("Electrolyte Volume", ProcessStage.ELECTROLYTE_FILLING.value, 460.0, 470.0, 450.0),
+        ("Tab Welding Power", ProcessStage.CELL_ASSEMBLY.value, 2100.0, 2200.0, 2000.0),
     ]
 
     base_date = datetime(2026, 6, 1)
