@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { fetchQualityIntelligence } from './api';
 import type { QualityIntelligenceResponse } from './api';
 import DashboardShell from './components/DashboardShell';
+import { TopFactorsCard } from './components/ShapExplainability';
 
 interface SPCChartPoint {
   value: number;
@@ -45,6 +46,7 @@ function QualityContent({ data, activeTab, setActiveTab }: {
 }) {
     const { process_parameters, inspection_records, defect_predictions, spc_charts, kpis, supplier_quality_matrix } = data;
     const driftingParams = process_parameters.filter(p => p.drift_detected);
+    const activeBatchId = defect_predictions.length > 0 ? defect_predictions[0].batch_id.toLowerCase() : 'batch-501';
 
     return (
         <div className="mt-12 space-y-6">
@@ -98,6 +100,21 @@ function QualityContent({ data, activeTab, setActiveTab }: {
             {/* Tab Content */}
             {activeTab === 'overview' && (
                 <div className="space-y-6">
+                    {/* SHAP Explainability for Drifts */}
+                    {driftingParams.length > 0 && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="md:col-span-1">
+                                <TopFactorsCard batchId={activeBatchId} />
+                            </div>
+                            <div className="md:col-span-2 bg-white border border-gray-100 rounded-xl p-5 shadow-sm flex flex-col justify-center text-center">
+                                <h3 className="text-gray-800 font-medium mb-2">Machine Learning Explainer Active</h3>
+                                <p className="text-gray-500 text-sm">
+                                    Our Random Forest model is actively computing SHAP values for the current drift deviation in {activeBatchId.toUpperCase()}. Review the top factors on the left to identify the root cause.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Process Parameters Table */}
                     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                         <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">

@@ -32,7 +32,16 @@ from operations import (
 )
 
 
-app = FastAPI()
+from contextlib import asynccontextmanager
+from scheduler import start_scheduler, shutdown_scheduler
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    start_scheduler()
+    yield
+    shutdown_scheduler()
+
+app = FastAPI(lifespan=lifespan)
 
 client = None
 
@@ -815,6 +824,56 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+from commodity_feed import calculate_capex
+
+@app.get("/api/commodity/prices")
+def api_get_commodity_prices():
+    return get_all_prices()
+
+@app.get("/api/commodity/capex-impact")
+def api_get_capex_impact(vehicle_type: str = "electric_truck_5t"):
+    return calculate_capex(vehicle_type)
+
+from shap_service import get_or_create_explanation, get_shap_waterfall_data, get_mock_snapshot, NORMAL_RANGES
+
+def get_dynamic_snapshot():
+    params = generate_process_data()
+    name_to_key = {
+        "Coating Thickness": "coating_thickness_um",
+        "Drying Temperature": "drying_temp_c",
+        "Drying Time": "drying_time_s",
+        "Calendering Pressure": "calendering_pressure_mpa",
+        "Electrolyte Volume": "electrolyte_fill_volume_ml",
+        "Formation Cycle Count": "formation_cycle_count",
+        "Ambient Humidity": "ambient_humidity_pct",
+        "Slurry Viscosity": "slurry_viscosity_cps",
+        "Electrode Density": "electrode_density_g_cc",
+        "Tab Welding Power": "tab_welding_power_w"
+    }
+    snapshot = {}
+    for p in params:
+        key = name_to_key.get(p.parameter_name)
+        if key:
+            snapshot[key] = p.current_value
+            
+    for key, range_val in NORMAL_RANGES.items():
+        if key not in snapshot:
+            snapshot[key] = (range_val[0] + range_val[1]) / 2.0
+            
+    return snapshot
+
+@app.get("/api/quality/drift/{batch_id}/explanation")
+def api_get_drift_explanation(batch_id: str):
+    snapshot = get_dynamic_snapshot()
+    return get_or_create_explanation(batch_id, snapshot)
+
+@app.get("/api/quality/drift/{batch_id}/shap-waterfall")
+def api_get_shap_waterfall(batch_id: str):
+    snapshot = get_dynamic_snapshot()
+    return get_shap_waterfall_data(batch_id, snapshot)
+
 
 
 @app.get("/")

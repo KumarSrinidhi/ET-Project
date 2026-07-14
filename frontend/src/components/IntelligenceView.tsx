@@ -4,6 +4,7 @@ import {
     fetchRulForecast, fetchCostPrediction, simulateCarbon, fetchDepotComparison,
     fetchAuditLog, exportAuditLogUrl, fetchPendingApprovals, submitApproval, decideApproval,
 } from '../api';
+import { TopFactorsCard } from './ShapExplainability';
 import type {
     CommodityPrice, BatteryCostBreakdown, ShapResult, ThermalForecast, RulForecast,
     CostPrediction, CarbonScenario, DepotComparison, AuditEntry, ApprovalRequest,
@@ -196,79 +197,12 @@ function CommodityPanel() {
 // ─── SHAP Explainability Panel ──────────────────────────────────────────────
 
 function ExplainabilityPanel() {
-    const [shap, setShap] = useState<ShapResult | null>(null);
-
-    useEffect(() => { fetchShapForCpk().then(setShap); }, []);
-
-    if (!shap) return <div className="p-5 text-gray-500 text-sm">Loading SHAP analysis...</div>;
-
     return (
-        <div className="space-y-6">
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
-                    <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">
-                        SHAP Parameter Contribution to Cpk
-                    </h3>
-                </div>
-                <div className="p-5 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <div className="bg-gray-50/80 rounded-xl p-5 text-center">
-                            <p className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Baseline Cpk</p>
-                            <p className="mt-2 font-mono text-xl font-semibold text-gray-900 tracking-tight">
-                                {shap.baseline_cpk.toFixed(2)}
-                            </p>
-                        </div>
-                        <div className="bg-gray-900 rounded-xl p-5 text-center">
-                            <p className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Current Cpk</p>
-                            <p className="mt-2 font-mono text-xl font-semibold text-white tracking-tight">
-                                {shap.current_cpk.toFixed(2)}
-                            </p>
-                        </div>
-                        <div className="bg-gray-50/80 rounded-xl p-5 text-center">
-                            <p className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Drifting Params</p>
-                            <p className="mt-2 font-mono text-xl font-semibold text-gray-900 tracking-tight">
-                                {shap.driving_factors.length}
-                            </p>
-                        </div>
-                    </div>
-                    <p className="text-sm text-gray-700 leading-relaxed bg-gray-50/50 p-3 rounded-lg border border-gray-100">
-                        {shap.interpretation}
-                    </p>
-                </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
-                    <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Per-Parameter SHAP Values</h3>
-                </div>
-                <table className="w-full text-sm text-left text-gray-500">
-                    <thead className="bg-gray-50/30 text-[11px] uppercase tracking-wider text-gray-400 font-medium">
-                        <tr>
-                            <th className="px-5 py-2.5">Parameter</th>
-                            <th className="px-5 py-2.5">Current</th>
-                            <th className="px-5 py-2.5">Target</th>
-                            <th className="px-5 py-2.5">Distance %</th>
-                            <th className="px-5 py-2.5">SHAP</th>
-                            <th className="px-5 py-2.5">Drifting</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                        {shap.all_contributions.map((c, i) => (
-                            <tr key={i} className="hover:bg-gray-50/50 transition-colors">
-                                <td className="px-5 py-3 font-medium text-gray-800">{c.parameter}</td>
-                                <td className="px-5 py-3 font-mono text-xs text-gray-800">{c.current_value}</td>
-                                <td className="px-5 py-3 font-mono text-xs text-gray-500">{c.target_value}</td>
-                                <td className="px-5 py-3 font-mono text-xs text-gray-500">{c.distance_from_target_pct}%</td>
-                                <td className="px-5 py-3 font-mono text-xs font-semibold text-gray-900">{c.shap_value.toFixed(4)}</td>
-                                <td className="px-5 py-3">
-                                    <span className={`text-xs font-mono px-2 py-0.5 rounded-full ${c.is_drifting ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-600'}`}>
-                                        {c.is_drifting ? 'Yes' : 'No'}
-                                    </span>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+        <div className="space-y-6 max-w-4xl">
+            <h3 className="text-xl font-bold text-gray-800">Process Capability Drift Explainer</h3>
+            <p className="text-sm text-gray-500">Live Machine Learning Root Cause Analysis for Cpk Deviation</p>
+            <div className="mt-4">
+                <TopFactorsCard batchId="batch-501" />
             </div>
         </div>
     );
