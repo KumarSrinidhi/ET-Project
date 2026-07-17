@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react';
 import { fetchSupplyChain } from './api';
 import type { SupplyChainNode } from './api';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import { CommodityPriceWidget } from './components/CommodityPriceWidget';
 import { RiskScoreCard } from './components/RiskScoreCard';
+import { useAuth } from './AuthContext';
+import DashboardShell from './components/DashboardShell';
 
 export default function SupplyChainDashboard({ selectedDepotId }: { selectedDepotId: string | null }) {
+    const { roleView } = useAuth();
     const [nodes, setNodes] = useState<SupplyChainNode[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -88,6 +93,7 @@ export default function SupplyChainDashboard({ selectedDepotId }: { selectedDepo
             {/* Main Content Grid: Map + Risk Register */}
             <div className="grid grid-cols-12 gap-6">
                 {/* Left Column: Map */}
+                {!roleView?.hiddenWidgets?.includes('supplyChainMap') && (
                 <div className="col-span-8 p-6 bg-white rounded-xl border border-gray-100 shadow-sm">
                     <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium mb-4">Material Flow & Supplier Network</h3>
                     <div className="rounded-xl overflow-hidden shadow-sm border border-gray-100 relative" style={{ height: '600px', width: '100%' }}>
@@ -121,6 +127,7 @@ export default function SupplyChainDashboard({ selectedDepotId }: { selectedDepo
                         </MapContainer>
                     </div>
                 </div>
+                )}
 
                 {/* Right Column: Risk Register or Risk Score Card */}
                 <div className="col-span-4 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex flex-col" style={{ height: '600px' }}>

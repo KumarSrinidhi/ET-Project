@@ -85,6 +85,83 @@ def seed_depots_and_vehicles(cursor):
     
     cursor.executemany('INSERT OR IGNORE INTO vehicles (vehicle_id, depot_id) VALUES (?, ?)', apm_vehicles)
 
+def seed_rbac(cursor):
+    cursor.execute("SELECT COUNT(*) FROM roles")
+    if cursor.fetchone()[0] > 0:
+        return
+        
+    roles = [
+        ("procurement", "Procurement Team"),
+        ("maintenance", "Maintenance Team"),
+        ("executive", "Executive Management"),
+        ("admin", "System Administrator")
+    ]
+    cursor.executemany('INSERT INTO roles (id, description) VALUES (?, ?)', roles)
+    
+    permissions = [
+        ("fleet.health.view", "fleet"),
+        ("fleet.health.detail", "fleet"),
+        ("fleet.maintenance.view", "fleet"),
+        ("fleet.maintenance.create", "fleet"),
+        ("fleet.maintenance.edit", "fleet"),
+        ("fleet.maintenance.approve", "fleet"),
+        ("fleet.procurement.view", "fleet"),
+        ("fleet.procurement.edit", "fleet"),
+        ("supply_chain.risk.view", "supply_chain"),
+        ("supply_chain.traceability.view", "supply_chain"),
+        ("quality.qms.view", "quality"),
+        ("carbon.dashboard.view", "carbon"),
+        ("carbon.dashboard.export", "carbon"),
+        ("admin.users.view", "admin"),
+        ("admin.users.edit", "admin"),
+        ("admin.audit.view", "admin"),
+        ("admin.audit.export", "admin"),
+        ("depot.all", "depot"),
+        ("depot.assigned", "depot")
+    ]
+    cursor.executemany('INSERT INTO permissions (id, module) VALUES (?, ?)', permissions)
+    
+    role_perms = []
+    
+    procurement_perms = [
+        "fleet.health.view", "fleet.procurement.view", "fleet.procurement.edit",
+        "supply_chain.risk.view", "supply_chain.traceability.view",
+        "quality.qms.view", "carbon.dashboard.view", "depot.assigned"
+    ]
+    role_perms.extend([("procurement", p) for p in procurement_perms])
+    
+    maintenance_perms = [
+        "fleet.health.view", "fleet.health.detail", "fleet.maintenance.view",
+        "fleet.maintenance.create", "fleet.maintenance.edit", "fleet.procurement.view",
+        "depot.assigned"
+    ]
+    role_perms.extend([("maintenance", p) for p in maintenance_perms])
+    
+    executive_perms = [
+        "fleet.health.view", "fleet.maintenance.view", "fleet.procurement.view",
+        "supply_chain.risk.view", "carbon.dashboard.view", "carbon.dashboard.export",
+        "depot.all"
+    ]
+    role_perms.extend([("executive", p) for p in executive_perms])
+    
+    admin_perms = [p[0] for p in permissions]
+    role_perms.extend([("admin", p) for p in admin_perms])
+    
+    cursor.executemany('INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)', role_perms)
+    
+    # Get random depots for assignment
+    cursor.execute("SELECT id FROM depots")
+    all_depots = [row[0] for row in cursor.fetchall()]
+    assigned_depots_proc = json.dumps(random.sample(all_depots, min(3, len(all_depots))))
+    assigned_depots_maint = json.dumps(random.sample(all_depots, min(2, len(all_depots))))
+    
+    users = [
+        ("proc_user", "Procurement User", "procurement@demo.com", "procurement", assigned_depots_proc, 1),
+        ("maint_user", "Maintenance User", "maintenance@demo.com", "maintenance", assigned_depots_maint, 1),
+        ("exec_user", "Executive User", "executive@demo.com", "executive", "[]", 1)
+    ]
+    cursor.executemany('INSERT INTO users (id, name, email, role_id, assigned_depots, active) VALUES (?, ?, ?, ?, ?, ?)', users)
+
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -229,6 +306,43 @@ def init_db():
         )
     ''')
     
+    # Create RBAC tables
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS roles (
+            id TEXT PRIMARY KEY,
+            description TEXT
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS permissions (
+            id TEXT PRIMARY KEY,
+            module TEXT
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS role_permissions (
+            role_id TEXT,
+            permission_id TEXT,
+            PRIMARY KEY(role_id, permission_id),
+            FOREIGN KEY(role_id) REFERENCES roles(id),
+            FOREIGN KEY(permission_id) REFERENCES permissions(id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            name TEXT,
+            email TEXT UNIQUE,
+            role_id TEXT,
+            assigned_depots TEXT,
+            active INTEGER,
+            FOREIGN KEY(role_id) REFERENCES roles(id)
+        )
+    ''')
+
     # Insert default configs if not present
     cursor.execute("SELECT COUNT(*) FROM config")
     if cursor.fetchone()[0] == 0:
@@ -244,6 +358,7 @@ def init_db():
         cursor.executemany("INSERT INTO config (key, value) VALUES (?, ?)", default_configs)
         
     seed_depots_and_vehicles(cursor)
+    seed_rbac(cursor)
     
     conn.commit()
     conn.close()

@@ -44,6 +44,90 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+from fastapi import FastAPI, Depends, HTTPException, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from auth import create_access_token, verify_token
+from database import get_db_connection
+import json
+
+security = HTTPBearer()
+
+def require_permission(required_perm: str):
+    def permission_checker(credentials: HTTPAuthorizationCredentials = Depends(security)):
+        token = credentials.credentials
+        payload = verify_token(token)
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+        
+        role_id = payload.get("role_id")
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check if role has the required permission (or is admin)
+        cursor.execute('''
+            SELECT 1 FROM role_permissions rp
+            JOIN permissions p ON rp.permission_id = p.id
+            WHERE rp.role_id = ? AND (p.id = ? OR rp.role_id = 'admin')
+        ''', (role_id, required_perm))
+        
+        if not cursor.fetchone() and role_id != 'admin':
+            conn.close()
+            raise HTTPException(status_code=403, detail={"error": "Insufficient permissions", "required": required_perm, "your_role": role_id})
+            
+        conn.close()
+        return payload
+    return permission_checker
+
+def require_depot_access(depot_id: str, user_payload: dict):
+    role_id = user_payload.get("role_id")
+    if role_id == 'admin':
+        return True
+        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT 1 FROM role_permissions WHERE role_id = ? AND permission_id = 'depot.all'", (role_id,))
+    has_all = cursor.fetchone() is not None
+    conn.close()
+    
+    if has_all:
+        return True
+        
+    depots = user_payload.get("depots", [])
+    if depot_id not in depots:
+        raise HTTPException(status_code=403, detail={"error": "Access to this depot is restricted"})
+    return True
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+@app.post("/api/auth/login")
+def login(req: LoginRequest):
+    # Hackathon mock logic: password check is ignored for demo accounts if email matches
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, role_id, assigned_depots FROM users WHERE email = ?", (req.email,))
+    user = cursor.fetchone()
+    conn.close()
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+    assigned_depots = json.loads(user["assigned_depots"]) if user["assigned_depots"] else []
+    
+    token = create_access_token(user["id"], user["role_id"], assigned_depots)
+    return {
+        "access_token": token,
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "role": user["role_id"],
+            "depots": assigned_depots
+        }
+    }
+
+
 client = None
 
 def get_openai_client():
@@ -428,7 +512,9 @@ Example format:
 
 @app.get("/api/fleet-readiness")
 def get_fleet_readiness(depot_id: str = None):
+
     if depot_id:
+        require_depot_access(depot_id, user)
         seed_value = sum(ord(c) for c in depot_id)
         random.seed(seed_value)
         num_vehicles = 15 + (seed_value % 15)
@@ -602,7 +688,9 @@ def get_supply_chain_risk(material: str):
 def get_maintenance_schedule_endpoint(depot_id: str = None):
     """Feature 3: Full optimized maintenance schedule with KPIs and constraints."""
     result = optimize_schedule()
+
     if depot_id:
+        require_depot_access(depot_id, user)
         seed_value = sum(ord(c) for c in depot_id)
         random.seed(seed_value)
         data = result.model_dump()
@@ -632,7 +720,9 @@ QUALITY_SNAPSHOT_CACHE = {}
 def get_quality_intelligence_endpoint(depot_id: str = None):
     """Feature 5: Manufacturing Quality Intelligence with drift detection and defect prediction."""
     report = generate_quality_report()
+
     if depot_id:
+        require_depot_access(depot_id, user)
         seed_value = sum(ord(c) for c in depot_id)
         random.seed(seed_value)
         data = report.model_dump()
@@ -696,7 +786,9 @@ def get_quality_drift_explanation(batch_id: str):
 def get_carbon_tracker_endpoint(depot_id: str = None):
     """Feature 6: Net Zero Progress & Carbon Intelligence Tracker."""
     report = generate_net_zero_report()
+
     if depot_id:
+        require_depot_access(depot_id, user)
         seed_value = sum(ord(c) for c in depot_id)
         random.seed(seed_value)
         data = report.model_dump()
@@ -811,6 +903,7 @@ def api_get_depots_heatmap(metric: str = "availability"):
 
 @app.get("/api/depots/{depot_id}/summary")
 def api_get_depot_summary(depot_id: str):
+    require_depot_access(depot_id, user)
     depot = get_depot_by_id(depot_id)
     if not depot:
         return {"error": "Depot not found"}
@@ -841,6 +934,7 @@ def api_get_depots():
 @app.get("/api/depots/{depot_id}")
 def get_depot_endpoint(depot_id: str):
     """Single depot details."""
+    require_depot_access(depot_id, user)
     d = get_depot_by_id(depot_id)
     if not d:
         return {"error": "Depot not found"}

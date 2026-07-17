@@ -12,6 +12,11 @@ import NetZeroDashboard from './NetZeroDashboard';
 import SupplyChainDashboard from './SupplyChainDashboard';
 import DepotSelector from './components/DepotSelector';
 import FleetComparisonDashboard from './components/FleetComparisonDashboard';
+import ExecutiveDashboard from './ExecutiveDashboard';
+import Login from './Login';
+import { useAuth } from './AuthContext';
+import { LogOut, User as UserIcon, ChevronDown, Menu } from 'lucide-react';
+import * as Icons from 'lucide-react';
 
 // Fix Leaflet default marker icon issue with bundlers
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -21,185 +26,206 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-type ActiveView = 'readiness' | 'apm' | 'maintenance' | 'supply_chain' | 'quality' | 'carbon' | 'intelligence';
-
 export default function App() {
+  const { user, roleView, logout, switchRole, isLoading } = useAuth();
   const [data, setData] = useState<ReadinessResult[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loadingData, setLoadingData] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<ActiveView>('readiness');
   const [selectedDepotId, setSelectedDepotId] = useState<string | null>(null);
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+  const [showRoleMenu, setShowRoleMenu] = useState(false);
 
+  // Sync Path
   useEffect(() => {
-    const syncHash = () => {
-      const hash = window.location.hash;
-      if (hash.startsWith('#/fleet/')) {
-        const parts = hash.split('/');
-        if (parts[2]) {
-          setSelectedDepotId(parts[2]);
-        }
-      } else {
-        setSelectedDepotId(null);
-      }
-    };
-    window.addEventListener('hashchange', syncHash);
-    syncHash(); // Initial load
-    return () => window.removeEventListener('hashchange', syncHash);
+    const handlePopState = () => setCurrentPath(window.location.pathname);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const handleSelectDepot = (depotId: string | null) => {
-    setSelectedDepotId(depotId);
-    if (depotId) {
-      window.location.hash = `#/fleet/${depotId}`;
-    } else {
-      window.location.hash = '';
-    }
+  const navigate = (path: string) => {
+    window.history.pushState({}, '', path);
+    setCurrentPath(path);
   };
 
+  // Enforce access control
   useEffect(() => {
+    if (user && roleView) {
+      const allowedPaths = roleView.navItems.map(item => item.path);
+      // Let it pass if it's an exact match or a sub-path
+      const isAllowed = allowedPaths.some(p => currentPath === p || currentPath.startsWith(p + '/'));
+      
+      if (!isAllowed && currentPath !== '/login') {
+        navigate(roleView.defaultRoute);
+      }
+    } else if (!user && !isLoading && currentPath !== '/login') {
+      navigate('/login');
+    }
+  }, [user, roleView, currentPath, isLoading]);
+
+  useEffect(() => {
+    if (!user) return;
     const loadData = async () => {
-      setLoading(true);
-      const results = await fetchFleetReadiness(selectedDepotId);
-      setData(results);
-      setLoading(false);
+      setLoadingData(true);
+      try {
+        const results = await fetchFleetReadiness(selectedDepotId);
+        setData(results);
+        setError(null);
+      } catch (err) {
+        console.error(err);
+        setError("Failed to connect to the backend.");
+      }
+      setLoadingData(false);
     };
 
-    loadData().catch((err) => {
-      console.error(err);
-      setError("Failed to connect to the backend. It may be starting up.");
-      setLoading(false);
-    });
-  }, [selectedDepotId]);
+    loadData();
+  }, [selectedDepotId, user]);
 
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-slate-950">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-400">Connecting to platform...</p>
-        </div>
-      </div>
-    );
+  if (isLoading) {
+    return <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>;
   }
 
-  if (error) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-slate-950">
-        <div className="text-center p-8 bg-slate-900 rounded-2xl shadow-xl max-w-md">
-          <p className="text-red-400 mb-4 font-medium">{error}</p>
-          <button
-            onClick={() => { setError(null); setLoading(true); window.location.reload(); }}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors"
-          >
-            Retry Connection
-          </button>
-        </div>
-      </div>
-    );
+  if (!user) {
+    return <Login />;
   }
 
-  const NAV_ITEMS: { key: ActiveView; label: string }[] = [
-    { key: 'readiness', label: '1. Fleet Readiness' },
-    { key: 'apm', label: '2. APM' },
-    { key: 'maintenance', label: '3. Maintenance' },
-    { key: 'supply_chain', label: '4. Supply Chain' },
-    { key: 'quality', label: '5. Quality' },
-    { key: 'carbon', label: '6. Net Zero' },
-    { key: 'intelligence', label: '7. Intelligence' },
-  ];
+  const renderContent = () => {
+    if (error) {
+      return (
+        <div className="flex h-[50vh] items-center justify-center">
+          <div className="text-center p-8 bg-white rounded-2xl shadow-sm border border-red-100 max-w-md">
+            <p className="text-red-500 mb-4 font-medium">{error}</p>
+            <button
+              onClick={() => { setError(null); setLoadingData(true); window.location.reload(); }}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500"
+            >
+              Retry Connection
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (loadingData) {
+      return (
+        <div className="flex h-[50vh] items-center justify-center">
+           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      );
+    }
+
+    if (currentPath === '/executive') return <ErrorBoundary><ExecutiveDashboard /></ErrorBoundary>;
+    if (currentPath === '/procurement') return <ErrorBoundary><FleetReadinessView data={data} /></ErrorBoundary>;
+    if (currentPath === '/supply-chain') return <ErrorBoundary><SupplyChainDashboard selectedDepotId={selectedDepotId} /></ErrorBoundary>;
+    if (currentPath === '/quality') return <ErrorBoundary><QualityDashboard selectedDepotId={selectedDepotId} /></ErrorBoundary>;
+    if (currentPath === '/carbon') return <ErrorBoundary><NetZeroDashboard selectedDepotId={selectedDepotId} /></ErrorBoundary>;
+    if (currentPath.startsWith('/maintenance')) return <ErrorBoundary><MaintenanceDashboard selectedDepotId={selectedDepotId} /></ErrorBoundary>;
+    if (currentPath.startsWith('/fleet')) {
+      return selectedDepotId === null ? 
+        <ErrorBoundary><FleetComparisonDashboard /></ErrorBoundary> :
+        <ErrorBoundary><FleetReadinessView data={data} /></ErrorBoundary>;
+    }
+    if (currentPath === '/commodity') return <ErrorBoundary><IntelligenceView /></ErrorBoundary>;
+    
+    // Default fallback
+    return <div className="p-8 text-center text-gray-500">Page under construction</div>;
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Platform Header */}
-      <header className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white shadow-lg relative z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold">EV Supply Chain & Asset Intelligence Platform</h1>
-            <p className="text-blue-200 text-sm mt-1">Fleet APM | Manufacturing Supply Chain | End-to-End Operations</p>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar Navigation */}
+      <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col shadow-xl z-20 hidden md:flex shrink-0">
+        <div className="p-6">
+          <div className="flex items-center gap-3 text-white mb-2">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <span className="font-bold">ET</span>
+            </div>
+            <h1 className="font-bold text-lg tracking-tight">EV Intelligence</h1>
           </div>
-          <DepotSelector selectedDepotId={selectedDepotId} onSelectDepot={handleSelectDepot} />
+          <p className="text-xs text-slate-500">Fleet & Supply Chain</p>
         </div>
-        {/* Navigation */}
-        <nav className="max-w-7xl mx-auto px-6">
-          <div className="flex gap-1 overflow-x-auto pb-0" role="tablist" aria-label="Feature Navigation">
-            {NAV_ITEMS.map(item => (
+
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto mt-4">
+          {roleView?.navItems.map((item) => {
+            const Icon = (Icons as any)[item.icon] || Icons.Circle;
+            const isActive = currentPath === item.path || (item.path !== '/' && currentPath.startsWith(item.path + '/'));
+            return (
               <button
-                key={item.key}
-                role="tab"
-                aria-selected={activeView === item.key}
-                onClick={() => setActiveView(item.key)}
-                className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap rounded-t-lg transition-colors ${activeView === item.key
-                    ? 'bg-gray-50 text-gray-900'
-                    : 'text-blue-200 hover:text-white hover:bg-white/10'
-                  }`}
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm font-medium
+                  ${isActive ? 'bg-blue-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}
               >
+                <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
                 {item.label}
               </button>
-            ))}
-          </div>
+            );
+          })}
         </nav>
-      </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-6">
+        <div className="p-4 mt-auto border-t border-slate-800">
+          <button 
+            onClick={logout}
+            className="w-full flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors text-sm"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign Out
+          </button>
+        </div>
+      </aside>
 
-        {selectedDepotId === null ? (
-          <ErrorBoundary>
-            <FleetComparisonDashboard />
-          </ErrorBoundary>
-        ) : (
-          <>
-            {/* FEATURE 1: FLEET READINESS */}
-            {activeView === 'readiness' && (
-              <ErrorBoundary>
-                <FleetReadinessView data={data} />
-              </ErrorBoundary>
-            )}
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        {/* Top Header */}
+        <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 shrink-0 z-10">
+          <div className="flex items-center gap-4">
+            <button className="md:hidden text-gray-500 hover:text-gray-900">
+              <Menu className="w-6 h-6" />
+            </button>
+            <DepotSelector selectedDepotId={selectedDepotId} onSelectDepot={setSelectedDepotId} />
+          </div>
 
-            {/* FEATURE 2: APM AGENT */}
-            {activeView === 'apm' && (
-              <ErrorBoundary>
-                <ApmAgentView queryApmAgent={queryApmAgent} />
-              </ErrorBoundary>
-            )}
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <button 
+                onClick={() => setShowRoleMenu(!showRoleMenu)}
+                className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full transition-colors border border-blue-200"
+              >
+                <UserIcon className="w-4 h-4" />
+                <span className="text-sm font-medium capitalize">{user.role} Team</span>
+                <ChevronDown className="w-4 h-4" />
+              </button>
+              
+              {showRoleMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-50">
+                  <div className="px-3 py-2 border-b border-gray-100 bg-gray-50/50">
+                    <p className="text-xs font-semibold text-gray-500 uppercase">Demo Only (Switch Role)</p>
+                  </div>
+                  {['procurement', 'maintenance', 'executive', 'admin'].map(r => (
+                    <button
+                      key={r}
+                      onClick={() => {
+                        setShowRoleMenu(false);
+                        switchRole(r);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm capitalize hover:bg-gray-50 transition-colors
+                        ${user.role === r ? 'text-blue-600 font-medium bg-blue-50/50' : 'text-gray-700'}`}
+                    >
+                      {r} View
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
 
-            {/* FEATURE 3: MAINTENANCE OPERATIONS OPTIMISER */}
-            {activeView === 'maintenance' && (
-              <ErrorBoundary>
-                <MaintenanceDashboard selectedDepotId={selectedDepotId} />
-              </ErrorBoundary>
-            )}
-
-            {/* FEATURE 4: SUPPLY CHAIN RISK & TRACEABILITY */}
-            {activeView === 'supply_chain' && (
-              <ErrorBoundary>
-                <SupplyChainDashboard selectedDepotId={selectedDepotId} />
-              </ErrorBoundary>
-            )}
-
-            {/* FEATURE 5: MANUFACTURING QUALITY */}
-            {activeView === 'quality' && (
-              <ErrorBoundary>
-                <QualityDashboard selectedDepotId={selectedDepotId} />
-              </ErrorBoundary>
-            )}
-
-            {/* FEATURE 6: NET ZERO & CARBON */}
-            {activeView === 'carbon' && (
-              <ErrorBoundary>
-                <NetZeroDashboard selectedDepotId={selectedDepotId} />
-              </ErrorBoundary>
-            )}
-
-            {/* FEATURE 7: INTELLIGENCE (Commodity, SHAP, Forecast, Simulator, Operations) */}
-            {activeView === 'intelligence' && (
-              <ErrorBoundary>
-                <IntelligenceView />
-              </ErrorBoundary>
-            )}
-          </>
-        )}
-
-      </main>
+        {/* Scrollable Content */}
+        <main className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
+          {renderContent()}
+        </main>
+      </div>
     </div>
   );
 }
