@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { fetchFleetReadiness, queryApmAgent } from './api';
+import { fetchFleetReadiness } from './api';
 import type { ReadinessResult } from './api';
 import L from 'leaflet';
 import ErrorBoundary from './components/ErrorBoundary';
-import ApmAgentView from './components/ApmAgentView';
+
 import FleetReadinessView from './components/FleetReadinessView';
 import IntelligenceView from './components/IntelligenceView';
 import MaintenanceDashboard from './MaintenanceDashboard';

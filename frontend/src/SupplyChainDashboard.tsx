@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { fetchSupplyChain } from './api';
 import type { SupplyChainNode } from './api';
-import L from 'leaflet';
+
 import 'leaflet/dist/leaflet.css';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import { CommodityPriceWidget } from './components/CommodityPriceWidget';
 import { RiskScoreCard } from './components/RiskScoreCard';
 import { useAuth } from './AuthContext';
-import DashboardShell from './components/DashboardShell';
+
 
 export default function SupplyChainDashboard({ selectedDepotId }: { selectedDepotId: string | null }) {
     const { roleView } = useAuth();

@@ -1,9 +1,9 @@
 import React from 'react';
-import { useAuth } from './AuthContext';
-import { Activity, Leaf, Globe, TrendingUp, ShieldAlert, CheckCircle, Battery, Zap } from 'lucide-react';
+
+import { Activity, Leaf, Globe, TrendingUp, ShieldAlert, Battery } from 'lucide-react';
 
 const ExecutiveDashboard: React.FC = () => {
-  const { roleView } = useAuth();
+
   
   return (
     <div className="space-y-6">
