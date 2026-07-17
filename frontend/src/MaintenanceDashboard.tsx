@@ -19,17 +19,18 @@ const PRIORITY_BADGE: Record<string, string> = {
 
 const BAY_COLORS = ['bg-indigo-400', 'bg-emerald-400', 'bg-purple-400', 'bg-cyan-400'];
 
-export default function MaintenanceDashboard() {
+export default function MaintenanceDashboard({ selectedDepotId }: { selectedDepotId: string | null }) {
     const [data, setData] = useState<OptimizedScheduleResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetchMaintenanceSchedule()
+        setLoading(true);
+        fetchMaintenanceSchedule(selectedDepotId)
             .then(setData)
             .catch((err) => setError(err.message))
             .finally(() => setLoading(false));
-    }, []);
+    }, [selectedDepotId]);
 
     return (
       <DashboardShell loading={loading} error={error} loadingMessage="Optimizing maintenance schedule...">

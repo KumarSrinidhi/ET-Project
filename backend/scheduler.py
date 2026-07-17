@@ -2,6 +2,7 @@ import logging
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from commodity_feed import fetch_live_prices
+from news_ingestion import ingest_news_and_calculate_risk
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +16,15 @@ def start_scheduler():
             trigger=IntervalTrigger(minutes=60),
             id='fetch_commodity_prices',
             name='Fetch live commodity prices hourly',
+            replace_existing=True
+        )
+
+        # Run every 4 hours for news and risk scores
+        scheduler.add_job(
+            ingest_news_and_calculate_risk,
+            trigger=IntervalTrigger(hours=4),
+            id='fetch_news_calculate_risk',
+            name='Fetch news and calculate risk scores every 4 hours',
             replace_existing=True
         )
         

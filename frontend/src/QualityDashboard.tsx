@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { fetchQualityIntelligence } from './api';
 import type { QualityIntelligenceResponse } from './api';
 import DashboardShell from './components/DashboardShell';
-import { TopFactorsCard } from './components/ShapExplainability';
+import { TopFactorsCard, InlineShapWaterfall } from './components/ShapExplainability';
 
 interface SPCChartPoint {
   value: number;
@@ -19,18 +19,19 @@ const SEVERITY_BADGE: Record<string, string> = {
     critical: 'bg-red-50 text-red-600',
 };
 
-export default function QualityDashboard() {
+export default function QualityDashboard({ selectedDepotId }: { selectedDepotId: string | null }) {
     const [data, setData] = useState<QualityIntelligenceResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'overview' | 'spc' | 'inspections' | 'predictions'>('overview');
 
     useEffect(() => {
-        fetchQualityIntelligence()
+        setLoading(true);
+        fetchQualityIntelligence(selectedDepotId)
             .then(setData)
             .catch((err) => setError(err.message))
             .finally(() => setLoading(false));
-    }, []);
+    }, [selectedDepotId]);
 
     return (
       <DashboardShell loading={loading} error={error} loadingMessage="Analyzing manufacturing quality data...">
@@ -106,11 +107,8 @@ function QualityContent({ data, activeTab, setActiveTab }: {
                             <div className="md:col-span-1">
                                 <TopFactorsCard batchId={activeBatchId} />
                             </div>
-                            <div className="md:col-span-2 bg-white border border-gray-100 rounded-xl p-5 shadow-sm flex flex-col justify-center text-center">
-                                <h3 className="text-gray-800 font-medium mb-2">Machine Learning Explainer Active</h3>
-                                <p className="text-gray-500 text-sm">
-                                    Our Random Forest model is actively computing SHAP values for the current drift deviation in {activeBatchId.toUpperCase()}. Review the top factors on the left to identify the root cause.
-                                </p>
+                            <div className="md:col-span-2">
+                                <InlineShapWaterfall batchId={activeBatchId} />
                             </div>
                         </div>
                     )}

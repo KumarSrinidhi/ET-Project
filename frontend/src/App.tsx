@@ -10,6 +10,8 @@ import MaintenanceDashboard from './MaintenanceDashboard';
 import QualityDashboard from './QualityDashboard';
 import NetZeroDashboard from './NetZeroDashboard';
 import SupplyChainDashboard from './SupplyChainDashboard';
+import DepotSelector from './components/DepotSelector';
+import FleetComparisonDashboard from './components/FleetComparisonDashboard';
 
 // Fix Leaflet default marker icon issue with bundlers
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -26,10 +28,38 @@ export default function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<ActiveView>('readiness');
+  const [selectedDepotId, setSelectedDepotId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const syncHash = () => {
+      const hash = window.location.hash;
+      if (hash.startsWith('#/fleet/')) {
+        const parts = hash.split('/');
+        if (parts[2]) {
+          setSelectedDepotId(parts[2]);
+        }
+      } else {
+        setSelectedDepotId(null);
+      }
+    };
+    window.addEventListener('hashchange', syncHash);
+    syncHash(); // Initial load
+    return () => window.removeEventListener('hashchange', syncHash);
+  }, []);
+
+  const handleSelectDepot = (depotId: string | null) => {
+    setSelectedDepotId(depotId);
+    if (depotId) {
+      window.location.hash = `#/fleet/${depotId}`;
+    } else {
+      window.location.hash = '';
+    }
+  };
 
   useEffect(() => {
     const loadData = async () => {
-      const results = await fetchFleetReadiness();
+      setLoading(true);
+      const results = await fetchFleetReadiness(selectedDepotId);
       setData(results);
       setLoading(false);
     };
@@ -39,7 +69,7 @@ export default function App() {
       setError("Failed to connect to the backend. It may be starting up.");
       setLoading(false);
     });
-  }, []);
+  }, [selectedDepotId]);
 
   if (loading) {
     return (
@@ -81,10 +111,13 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Platform Header */}
-      <header className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <h1 className="text-2xl font-bold">EV Supply Chain & Asset Intelligence Platform</h1>
-          <p className="text-blue-200 text-sm mt-1">Fleet APM | Manufacturing Supply Chain | End-to-End Operations</p>
+      <header className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white shadow-lg relative z-50">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">EV Supply Chain & Asset Intelligence Platform</h1>
+            <p className="text-blue-200 text-sm mt-1">Fleet APM | Manufacturing Supply Chain | End-to-End Operations</p>
+          </div>
+          <DepotSelector selectedDepotId={selectedDepotId} onSelectDepot={handleSelectDepot} />
         </div>
         {/* Navigation */}
         <nav className="max-w-7xl mx-auto px-6">
@@ -109,53 +142,61 @@ export default function App() {
 
       <main className="max-w-7xl mx-auto px-6 py-6">
 
-        {/* FEATURE 1: FLEET READINESS */}
-        {activeView === 'readiness' && (
+        {selectedDepotId === null ? (
           <ErrorBoundary>
-            <FleetReadinessView data={data} />
+            <FleetComparisonDashboard />
           </ErrorBoundary>
-        )}
+        ) : (
+          <>
+            {/* FEATURE 1: FLEET READINESS */}
+            {activeView === 'readiness' && (
+              <ErrorBoundary>
+                <FleetReadinessView data={data} />
+              </ErrorBoundary>
+            )}
 
-        {/* FEATURE 2: APM AGENT */}
-        {activeView === 'apm' && (
-          <ErrorBoundary>
-            <ApmAgentView queryApmAgent={queryApmAgent} />
-          </ErrorBoundary>
-        )}
+            {/* FEATURE 2: APM AGENT */}
+            {activeView === 'apm' && (
+              <ErrorBoundary>
+                <ApmAgentView queryApmAgent={queryApmAgent} />
+              </ErrorBoundary>
+            )}
 
-        {/* FEATURE 3: MAINTENANCE OPERATIONS OPTIMISER */}
-        {activeView === 'maintenance' && (
-          <ErrorBoundary>
-            <MaintenanceDashboard />
-          </ErrorBoundary>
-        )}
+            {/* FEATURE 3: MAINTENANCE OPERATIONS OPTIMISER */}
+            {activeView === 'maintenance' && (
+              <ErrorBoundary>
+                <MaintenanceDashboard selectedDepotId={selectedDepotId} />
+              </ErrorBoundary>
+            )}
 
-        {/* FEATURE 4: SUPPLY CHAIN RISK & TRACEABILITY */}
-        {activeView === 'supply_chain' && (
-          <ErrorBoundary>
-            <SupplyChainDashboard />
-          </ErrorBoundary>
-        )}
+            {/* FEATURE 4: SUPPLY CHAIN RISK & TRACEABILITY */}
+            {activeView === 'supply_chain' && (
+              <ErrorBoundary>
+                <SupplyChainDashboard selectedDepotId={selectedDepotId} />
+              </ErrorBoundary>
+            )}
 
-        {/* FEATURE 5: MANUFACTURING QUALITY */}
-        {activeView === 'quality' && (
-          <ErrorBoundary>
-            <QualityDashboard />
-          </ErrorBoundary>
-        )}
+            {/* FEATURE 5: MANUFACTURING QUALITY */}
+            {activeView === 'quality' && (
+              <ErrorBoundary>
+                <QualityDashboard selectedDepotId={selectedDepotId} />
+              </ErrorBoundary>
+            )}
 
-        {/* FEATURE 6: NET ZERO & CARBON */}
-        {activeView === 'carbon' && (
-          <ErrorBoundary>
-            <NetZeroDashboard />
-          </ErrorBoundary>
-        )}
+            {/* FEATURE 6: NET ZERO & CARBON */}
+            {activeView === 'carbon' && (
+              <ErrorBoundary>
+                <NetZeroDashboard selectedDepotId={selectedDepotId} />
+              </ErrorBoundary>
+            )}
 
-        {/* FEATURE 7: INTELLIGENCE (Commodity, SHAP, Forecast, Simulator, Operations) */}
-        {activeView === 'intelligence' && (
-          <ErrorBoundary>
-            <IntelligenceView />
-          </ErrorBoundary>
+            {/* FEATURE 7: INTELLIGENCE (Commodity, SHAP, Forecast, Simulator, Operations) */}
+            {activeView === 'intelligence' && (
+              <ErrorBoundary>
+                <IntelligenceView />
+              </ErrorBoundary>
+            )}
+          </>
         )}
 
       </main>

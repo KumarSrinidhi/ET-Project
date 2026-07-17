@@ -1,14 +1,21 @@
 import { useState, useEffect } from 'react';
 import {
-    fetchCommodities, fetchBatteryCost, fetchShapForCpk, fetchThermalForecast,
+    fetchCommodities, fetchBatteryCost, fetchThermalForecast,
     fetchRulForecast, fetchCostPrediction, simulateCarbon, fetchDepotComparison,
     fetchAuditLog, exportAuditLogUrl, fetchPendingApprovals, submitApproval, decideApproval,
 } from '../api';
 import { TopFactorsCard } from './ShapExplainability';
 import type {
-    CommodityPrice, BatteryCostBreakdown, ShapResult, ThermalForecast, RulForecast,
-    CostPrediction, CarbonScenario, DepotComparison, AuditEntry, ApprovalRequest,
+    CommodityPrice, BatteryCostBreakdown, ThermalForecast, RulForecast,
+    CostPrediction, CarbonScenario, AuditEntry, ApprovalRequest, DepotComparisonData,
 } from '../api';
+
+interface DepotComparison {
+  depots: DepotComparisonData[];
+  summary: {
+    total_vehicles: number;
+  };
+}
 
 type SubTab = 'commodity' | 'explainability' | 'forecast' | 'simulator' | 'operations';
 
@@ -475,7 +482,16 @@ function OperationsPanel() {
     const decision = { decided_by: 'supervisor@evplatform.io', role: 'maintenance', reason: '' };
 
     const reload = () => {
-        fetchDepotComparison().then(setDepots);
+        fetchDepotComparison().then(data => {
+            const depotsList = data?.depots || [];
+            const totalVehicles = depotsList.reduce((acc, d) => acc + d.vehicle_count, 0);
+            setDepots({
+                depots: depotsList,
+                summary: {
+                    total_vehicles: totalVehicles
+                }
+            });
+        });
         fetchAuditLog('admin').then(setAudit);
         fetchPendingApprovals('maintenance').then(d => setPending(d.pending));
     };
@@ -521,19 +537,19 @@ function OperationsPanel() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {depots.depots.map(d => (
-                                    <tr key={d.depot_id} className="hover:bg-gray-50/50 transition-colors">
+                                {depots.depots.map((d: any) => (
+                                    <tr key={d.id} className="hover:bg-gray-50/50 transition-colors">
                                         <td className="px-5 py-3 font-medium text-gray-800">{d.name}</td>
-                                        <td className="px-5 py-3 text-xs text-gray-500">{d.city}</td>
-                                        <td className="px-5 py-3 text-xs text-gray-500">{d.primary_use}</td>
+                                        <td className="px-5 py-3 text-xs text-gray-500">{d.region}</td>
+                                        <td className="px-5 py-3 text-xs text-gray-500">{d.code}</td>
                                         <td className="px-5 py-3 font-mono text-xs text-gray-800">{d.vehicle_count}</td>
-                                        <td className="px-5 py-3 font-mono text-xs font-semibold text-gray-900">{d.avg_soh}%</td>
+                                        <td className="px-5 py-3 font-mono text-xs font-semibold text-gray-900">{d.metrics?.avg_soh ?? '--'}%</td>
                                         <td className="px-5 py-3">
-                                            <span className={`text-xs font-mono px-2 py-0.5 rounded-full ${d.active_anomalies > 2 ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-600'}`}>
-                                                {d.active_anomalies}
+                                            <span className={`text-xs font-mono px-2 py-0.5 rounded-full bg-gray-100 text-gray-600`}>
+                                                --
                                             </span>
                                         </td>
-                                        <td className="px-5 py-3 font-mono text-xs text-gray-800">₹{d.monthly_cost_inr.toLocaleString('en-IN')}</td>
+                                        <td className="px-5 py-3 font-mono text-xs text-gray-800">--</td>
                                     </tr>
                                 ))}
                             </tbody>

@@ -16,10 +16,13 @@ export interface ReadinessResult {
   estimated_capex_inr: number;
 }
 
-export const fetchFleetReadiness = async (retries = 5): Promise<ReadinessResult[]> => {
+export const fetchFleetReadiness = async (depotId?: string | null, retries = 5): Promise<ReadinessResult[]> => {
   for (let i = 0; i < retries; i++) {
     try {
-      const response = await axios.get<ReadinessResult[]>(`${BASE}/api/fleet-readiness`, { timeout: 10000 });
+      const response = await axios.get<ReadinessResult[]>(`${BASE}/api/fleet-readiness`, {
+        params: { depot_id: depotId },
+        timeout: 10000
+      });
       return response.data;
     } catch (err: any) {
       // If it's not a network/timeout error, fail immediately
@@ -94,8 +97,10 @@ export interface OptimizedScheduleResponse {
   };
 }
 
-export const fetchMaintenanceSchedule = async (): Promise<OptimizedScheduleResponse> => {
-  const response = await axios.get<OptimizedScheduleResponse>(`${BASE}/api/maintenance-schedule`);
+export const fetchMaintenanceSchedule = async (depotId?: string | null): Promise<OptimizedScheduleResponse> => {
+  const response = await axios.get<OptimizedScheduleResponse>(`${BASE}/api/maintenance-schedule`, {
+    params: { depot_id: depotId }
+  });
   return response.data;
 };
 
@@ -160,8 +165,10 @@ export interface QualityIntelligenceResponse {
   }[];
 }
 
-export const fetchQualityIntelligence = async (): Promise<QualityIntelligenceResponse> => {
-  const response = await axios.get<QualityIntelligenceResponse>(`${BASE}/api/quality-intelligence`);
+export const fetchQualityIntelligence = async (depotId?: string | null): Promise<QualityIntelligenceResponse> => {
+  const response = await axios.get<QualityIntelligenceResponse>(`${BASE}/api/quality-intelligence`, {
+    params: { depot_id: depotId }
+  });
   return response.data;
 };
 
@@ -220,8 +227,10 @@ export interface NetZeroReport {
   recommendations: string[];
 }
 
-export const fetchNetZeroReport = async (): Promise<NetZeroReport> => {
-  const response = await axios.get<NetZeroReport>(`${BASE}/api/carbon-tracker`);
+export const fetchNetZeroReport = async (depotId?: string | null): Promise<NetZeroReport> => {
+  const response = await axios.get<NetZeroReport>(`${BASE}/api/carbon-tracker`, {
+    params: { depot_id: depotId }
+  });
   return response.data;
 };
 
@@ -240,8 +249,10 @@ export interface SupplyChainNode {
   criticality: string;
 }
 
-export const fetchSupplyChain = async (): Promise<SupplyChainNode[]> => {
-  const response = await axios.get<SupplyChainNode[]>(`${BASE}/api/supply-chain`);
+export const fetchSupplyChain = async (depotId?: string | null): Promise<SupplyChainNode[]> => {
+  const response = await axios.get<SupplyChainNode[]>(`${BASE}/api/supply-chain`, {
+    params: { depot_id: depotId }
+  });
   return response.data;
 };
 
@@ -259,6 +270,42 @@ export interface SupplyChainTraceResponse {
   citations: NewsCitation[];
   total_articles_analyzed: number;
 }
+
+export interface RiskCitation {
+  id: string;
+  title: string;
+  source: string;
+  url: string;
+  published_date: string;
+  relevance_score: number;
+  sentiment: 'positive' | 'neutral' | 'negative';
+  extracted_claims: string[];
+}
+
+export interface RiskSubScore {
+  score: number;
+  weight: number;
+  weighted_contribution: number;
+  citations: RiskCitation[];
+}
+
+export interface RiskScoreResponse {
+  material: string;
+  overall_risk: number;
+  level: 'green' | 'yellow' | 'orange' | 'high';
+  last_updated: string;
+  sub_scores: {
+    geopolitical?: RiskSubScore;
+    regulatory?: RiskSubScore;
+    operational?: RiskSubScore;
+    environmental?: RiskSubScore;
+  };
+}
+
+export const fetchRiskScore = async (material: string): Promise<RiskScoreResponse> => {
+  const response = await axios.get<RiskScoreResponse>(`${BASE}/api/supply-chain/risk/${material}`);
+  return response.data;
+};
 
 // ─── Commodity Feed ─────────────────────────────────────────────────────────
 
@@ -414,13 +461,52 @@ export interface DepotComparisonRow extends Depot {
   monthly_cost_inr: number;
 }
 
-export interface DepotComparison {
-  depots: DepotComparisonRow[];
-  summary: { total_vehicles: number; best_performer: string; needs_attention: string; total_monthly_cost_inr: number };
+export interface Depot {
+  id: string;
+  name: string;
+  code: string;
+  region: string;
+  lat: number;
+  lng: number;
+  timezone: string;
+  vehicle_count: number;
+  manager_name: string;
+  charging_infra: Record<string, any>;
+  workshop_capacity: Record<string, any>;
 }
 
-export const fetchDepotComparison = async (): Promise<DepotComparison> => {
+export const fetchAllDepots = async (): Promise<{ depots: Depot[] }> => {
   const r = await axios.get(`${BASE}/api/depots`);
+  return r.data;
+};
+
+export interface DepotComparisonData {
+  id: string;
+  name: string;
+  code: string;
+  region: string;
+  vehicle_count: number;
+  lat: number;
+  lng: number;
+  metrics: {
+    avg_soh: number;
+    availability: number;
+    rul: number;
+  };
+}
+
+export const fetchDepotComparison = async (region?: string): Promise<{ depots: DepotComparisonData[] }> => {
+  const r = await axios.get(`${BASE}/api/depots/compare`, { params: { region } });
+  return r.data;
+};
+
+export const fetchDepotSummary = async (depotId: string) => {
+  const r = await axios.get(`${BASE}/api/depots/${depotId}/summary`);
+  return r.data;
+};
+
+export const fetchDepotsHeatmap = async (metric = "availability") => {
+  const r = await axios.get(`${BASE}/api/depots/compare/heatmap`, { params: { metric } });
   return r.data;
 };
 
@@ -472,4 +558,29 @@ export const decideApproval = async (requestId: string, approved: boolean, decid
     approved, decided_by: decidedBy, role, reason,
   });
   return r.data;
+};
+
+export interface ShapFactor {
+  parameter: string;
+  shap_value: number;
+  direction: 'helpful' | 'harmful';
+  current_value: number;
+  normal_range: [number, number];
+}
+
+export interface ShapExplanation {
+  batch_id: string;
+  cpk: number;
+  threshold: number;
+  status: string;
+  top_factors: ShapFactor[];
+  base_value: number;
+  all_factors: ShapFactor[];
+  summary: string;
+  timestamp: string;
+}
+
+export const fetchQualityDriftExplanation = async (batchId: string): Promise<ShapExplanation> => {
+  const response = await axios.get<ShapExplanation>(`${BASE}/api/quality/drift/${batchId}/explanation`);
+  return response.data;
 };

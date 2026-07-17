@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowUp, ArrowDown, AlertTriangle, TrendingUp } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 
 interface PriceData {
   price: number;

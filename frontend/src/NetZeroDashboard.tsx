@@ -3,18 +3,19 @@ import { fetchNetZeroReport } from './api';
 import type { NetZeroReport } from './api';
 import DashboardShell from './components/DashboardShell';
 
-export default function NetZeroDashboard() {
+export default function NetZeroDashboard({ selectedDepotId }: { selectedDepotId: string | null }) {
     const [data, setData] = useState<NetZeroReport | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'overview' | 'fleet' | 'supply_chain' | 'progress'>('overview');
 
     useEffect(() => {
-        fetchNetZeroReport()
+        setLoading(true);
+        fetchNetZeroReport(selectedDepotId)
             .then(setData)
             .catch((err) => setError(err.message))
             .finally(() => setLoading(false));
-    }, []);
+    }, [selectedDepotId]);
 
     return (
       <DashboardShell loading={loading} error={error} loadingMessage="Calculating carbon intelligence...">
