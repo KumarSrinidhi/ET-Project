@@ -34,6 +34,24 @@ from operations import (
 
 app = FastAPI()
 
+
+@app.on_event("startup")
+async def warm_caches_on_startup():
+    """Populate OSM coordinates and RSS news once on server boot.
+    Caches then serve subsequent requests with no external calls for 5 minutes."""
+    print("[startup] Warming OSM coordinate cache...")
+    nodes = get_base_nodes_lazy()
+    print(f"[startup]   {len(nodes)} supply chain nodes loaded")
+
+    print("[startup] Warming RSS news cache...")
+    try:
+        execute_live_news_risk_assessment()
+        age = int(time.time() - _news_cache["fetched_at"])
+        print(f"[startup]   {len(_news_cache['citations'])} articles cached (age {age}s)")
+    except Exception as e:
+        print(f"[startup]   RSS warmup failed: {e}")
+
+
 client = None
 
 def get_openai_client():
@@ -278,6 +296,15 @@ RSS_FEEDS = [
     "https://www.theguardian.com/world/rss",
     "https://www.yahoo.com/news/rss",
 ]
+
+# 5-minute TTL cache for RSS news so the 12 feeds aren't re-parsed on every
+# agent call. Keyed implicitly: only one entry — the latest snapshot.
+import time
+_news_cache: dict = {"entries": [], "citations": [], "fetched_at": 0.0}
+NEWS_CACHE_TTL_SECONDS = 300
+
+def _news_cache_is_valid() -> bool:
+    return bool(_news_cache["entries"]) and (time.time() - _news_cache["fetched_at"]) < NEWS_CACHE_TTL_SECONDS
 
 def execute_live_news_risk_assessment() -> list:
     """Scrapes live RSS feeds from 12 sources and uses LLM to dynamically score risk.
