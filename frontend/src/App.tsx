@@ -6,6 +6,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 import FleetReadinessView from './components/FleetReadinessView';
 import IntelligenceView from './components/IntelligenceView';
+import BusinessAnalyticsView from './components/BusinessAnalyticsView';
+import LiveAlerts from './components/LiveAlerts';
 import MaintenanceDashboard from './MaintenanceDashboard';
 import QualityDashboard from './QualityDashboard';
 import NetZeroDashboard from './NetZeroDashboard';
@@ -127,7 +129,8 @@ export default function App() {
         <ErrorBoundary><FleetReadinessView data={data} /></ErrorBoundary>;
     }
     if (currentPath === '/commodity') return <ErrorBoundary><IntelligenceView /></ErrorBoundary>;
-    
+    if (currentPath === '/analytics') return <ErrorBoundary><BusinessAnalyticsView /></ErrorBoundary>;
+
     // Default fallback
     return <div className="p-8 text-center text-gray-500">Page under construction</div>;
   };
@@ -226,6 +229,7 @@ export default function App() {
           {renderContent()}
         </main>
       </div>
+      <LiveAlerts />
     </div>
   );
 }

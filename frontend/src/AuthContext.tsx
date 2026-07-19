@@ -22,7 +22,8 @@ const ROLE_VIEWS: Record<string, RoleView> = {
       { label: "Supply Chain Risk", path: "/supply-chain", icon: "Globe" },
       { label: "Commodity Prices", path: "/commodity", icon: "TrendingUp" },
       { label: "Quality Dashboard", path: "/quality", icon: "CheckCircle" },
-      { label: "Carbon Overview", path: "/carbon", icon: "Leaf" }
+      { label: "Carbon Overview", path: "/carbon", icon: "Leaf" },
+      { label: "Business Analytics", path: "/analytics", icon: "BarChart3" }
     ],
     defaultRoute: "/procurement",
     hiddenWidgets: ["maintenanceSchedule", "workOrderList", "technicianView"],
@@ -34,7 +35,8 @@ const ROLE_VIEWS: Record<string, RoleView> = {
       { label: "Maintenance Schedule", path: "/maintenance", icon: "Calendar" },
       { label: "Work Orders", path: "/maintenance/orders", icon: "Tool" },
       { label: "Parts Inventory", path: "/maintenance/parts", icon: "Box" },
-      { label: "Mobile View", path: "/maintenance/mobile", icon: "Smartphone" }
+      { label: "Mobile View", path: "/maintenance/mobile", icon: "Smartphone" },
+      { label: "Business Analytics", path: "/analytics", icon: "BarChart3" }
     ],
     defaultRoute: "/fleet/health",
     hiddenWidgets: ["commodityPrices", "supplyChainMap", "carbonTracker"],
@@ -45,7 +47,8 @@ const ROLE_VIEWS: Record<string, RoleView> = {
       { label: "Executive Dashboard", path: "/executive", icon: "PieChart" },
       { label: "Carbon & Net Zero", path: "/carbon", icon: "Leaf" },
       { label: "Fleet Overview", path: "/fleet/health", icon: "Activity" },
-      { label: "Supply Chain Risk", path: "/supply-chain", icon: "Globe" }
+      { label: "Supply Chain Risk", path: "/supply-chain", icon: "Globe" },
+      { label: "Business Analytics", path: "/analytics", icon: "BarChart3" }
     ],
     defaultRoute: "/executive",
     hiddenWidgets: [],
@@ -59,7 +62,8 @@ const ROLE_VIEWS: Record<string, RoleView> = {
       { label: "Procurement", path: "/procurement", icon: "Briefcase" },
       { label: "Supply Chain", path: "/supply-chain", icon: "Globe" },
       { label: "Quality", path: "/quality", icon: "CheckCircle" },
-      { label: "Carbon & Net Zero", path: "/carbon", icon: "Leaf" }
+      { label: "Carbon & Net Zero", path: "/carbon", icon: "Leaf" },
+      { label: "Business Analytics", path: "/analytics", icon: "BarChart3" }
     ],
     defaultRoute: "/executive",
     hiddenWidgets: [],

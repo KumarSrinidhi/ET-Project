@@ -525,6 +525,49 @@ export const fetchDepotSummary = async (depotId: string) => {
   return r.data;
 };
 
+// ─── Live Alerts + Business Analytics ────────────────────────────────────────
+
+export interface Alert {
+    alert_id: string;
+    timestamp: string;
+    severity: 'critical' | 'warning' | 'info';
+    category: string;
+    vehicle_id: string;
+    message: string;
+    value: number;
+    acknowledged: boolean;
+}
+
+export const fetchAlerts = async (limit: number = 50, severity?: string): Promise<Alert[]> => {
+    const r = await axios.get(`${BASE}/api/alerts`, { params: { limit, severity } });
+    return r.data.alerts;
+};
+
+export const acknowledgeAlert = async (alertId: string): Promise<{ acknowledged: boolean }> => {
+    const r = await axios.post(`${BASE}/api/alerts/${alertId}/acknowledge`);
+    return r.data;
+};
+
+export const fetchCohort = async () => {
+    const r = await axios.get(`${BASE}/api/analytics/cohort`);
+    return r.data;
+};
+
+export const fetchTcoTrend = async (months: number = 12) => {
+    const r = await axios.get(`${BASE}/api/analytics/tco-trend`, { params: { months } });
+    return r.data;
+};
+
+export const fetchVendorScorecard = async () => {
+    const r = await axios.get(`${BASE}/api/analytics/vendor-scorecard`);
+    return r.data;
+};
+
+export const fetchCarbonCredits = async () => {
+    const r = await axios.get(`${BASE}/api/analytics/carbon-credits`);
+    return r.data;
+};
+
 export const fetchDepotsHeatmap = async (metric = "availability") => {
   const r = await axios.get(`${BASE}/api/depots/compare/heatmap`, { params: { metric } });
   return r.data;
