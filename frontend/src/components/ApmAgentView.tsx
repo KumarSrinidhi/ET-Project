@@ -98,11 +98,44 @@ export default function ApmAgentView({ queryApmAgent }: ApmAgentViewProps) {
             <div className="mb-4 p-4 bg-gray-50 border-l-4 border-blue-500 text-sm text-gray-700 italic flex items-center justify-between gap-3">
               <strong className="font-bold not-italic text-gray-900">{agentData.agent_thought_process}</strong>
               {typeof agentData.routing_confidence === 'number' && (
-                <span className="flex-shrink-0 text-[11px] uppercase tracking-wider text-gray-400 font-medium">
-                  Routing confidence: <span className="font-mono text-gray-900 ml-1">{Math.round(agentData.routing_confidence * 100)}%</span>
+                <span className={`flex-shrink-0 text-[11px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full ${
+                  agentData.routing_confidence < 0.6
+                    ? 'bg-red-50 text-red-600'
+                    : agentData.routing_confidence < 0.8
+                    ? 'bg-gray-100 text-gray-700'
+                    : 'bg-gray-900 text-white'
+                }`}>
+                  Routing {Math.round(agentData.routing_confidence * 100)}%
                 </span>
               )}
             </div>
+
+            {typeof agentData.routing_confidence === 'number' && agentData.routing_confidence < 0.6 && (
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm font-medium text-red-900">Low routing confidence</p>
+                <p className="text-xs text-red-700 mt-1 leading-relaxed">
+                  I am not certain which tool best matches your request. Try one of these instead:
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {[
+                    { label: 'Show fleet health',           query: 'Show me the battery health of all vehicles' },
+                    { label: 'Check thermal anomalies',     query: 'Which vehicles have thermal anomalies?' },
+                    { label: 'Get maintenance schedule',    query: 'Generate the maintenance schedule' },
+                    { label: 'Trace supply chain',          query: 'Trace the battery supply chain and show risk scores' },
+                    { label: 'Manufacturing quality',       query: 'Show manufacturing quality and drift alerts' },
+                    { label: 'Carbon emissions report',     query: 'What are our carbon emissions by scope?' },
+                  ].map(p => (
+                    <button
+                      key={p.label}
+                      onClick={() => setApmQuery(p.query)}
+                      className="px-3 py-1.5 text-xs font-medium bg-white text-red-800 rounded-full border border-red-200 hover:bg-red-100 transition-colors"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Fleet Health / Anomalies table */}
             {agentData.results.length > 0 && 'current_soh' in agentData.results[0] && (

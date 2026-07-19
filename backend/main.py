@@ -1273,6 +1273,13 @@ def api_get_shap_waterfall(batch_id: str):
         snapshot = QUALITY_SNAPSHOT_CACHE[bid]
     else:
         snapshot = get_dynamic_snapshot()
+
+    # get_dynamic_snapshot() returns None when LLM is unavailable. Fall back
+    # to the static mock snapshot so the endpoint never crashes the dashboard.
+    if snapshot is None:
+        from shap_service import get_mock_snapshot
+        snapshot = get_mock_snapshot()
+
     return get_shap_waterfall_data(batch_id, snapshot)
 
 
