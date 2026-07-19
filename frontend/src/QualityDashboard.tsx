@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { fetchQualityIntelligence } from './api';
 import type { QualityIntelligenceResponse } from './api';
 import DashboardShell from './components/DashboardShell';
+import { TopFactorsCard, InlineShapWaterfall } from './components/ShapExplainability';
 
 interface SPCChartPoint {
   value: number;
@@ -18,18 +19,19 @@ const SEVERITY_BADGE: Record<string, string> = {
     critical: 'bg-red-50 text-red-600',
 };
 
-export default function QualityDashboard() {
+export default function QualityDashboard({ selectedDepotId }: { selectedDepotId: string | null }) {
     const [data, setData] = useState<QualityIntelligenceResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'overview' | 'spc' | 'inspections' | 'predictions'>('overview');
 
     useEffect(() => {
-        fetchQualityIntelligence()
+        setLoading(true);
+        fetchQualityIntelligence(selectedDepotId)
             .then(setData)
             .catch((err) => setError(err.message))
             .finally(() => setLoading(false));
-    }, []);
+    }, [selectedDepotId]);
 
     return (
       <DashboardShell loading={loading} error={error} loadingMessage="Analyzing manufacturing quality data...">
@@ -45,6 +47,7 @@ function QualityContent({ data, activeTab, setActiveTab }: {
 }) {
     const { process_parameters, inspection_records, defect_predictions, spc_charts, kpis, supplier_quality_matrix } = data;
     const driftingParams = process_parameters.filter(p => p.drift_detected);
+    const activeBatchId = defect_predictions.length > 0 ? defect_predictions[0].batch_id.toLowerCase() : 'batch-501';
 
     return (
         <div className="mt-12 space-y-6">
@@ -98,6 +101,18 @@ function QualityContent({ data, activeTab, setActiveTab }: {
             {/* Tab Content */}
             {activeTab === 'overview' && (
                 <div className="space-y-6">
+                    {/* SHAP Explainability for Drifts */}
+                    {driftingParams.length > 0 && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="md:col-span-1">
+                                <TopFactorsCard batchId={activeBatchId} />
+                            </div>
+                            <div className="md:col-span-2">
+                                <InlineShapWaterfall batchId={activeBatchId} />
+                            </div>
+                        </div>
+                    )}
+
                     {/* Process Parameters Table */}
                     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                         <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">

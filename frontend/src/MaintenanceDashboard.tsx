@@ -19,26 +19,30 @@ const PRIORITY_BADGE: Record<string, string> = {
 
 const BAY_COLORS = ['bg-indigo-400', 'bg-emerald-400', 'bg-purple-400', 'bg-cyan-400'];
 
-export default function MaintenanceDashboard() {
+import { useAuth } from './AuthContext';
+
+export default function MaintenanceDashboard({ selectedDepotId }: { selectedDepotId: string | null }) {
+    const { roleView } = useAuth();
     const [data, setData] = useState<OptimizedScheduleResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetchMaintenanceSchedule()
+        setLoading(true);
+        fetchMaintenanceSchedule(selectedDepotId)
             .then(setData)
             .catch((err) => setError(err.message))
             .finally(() => setLoading(false));
-    }, []);
+    }, [selectedDepotId]);
 
     return (
       <DashboardShell loading={loading} error={error} loadingMessage="Optimizing maintenance schedule...">
-        {data && <MaintenanceContent data={data} />}
+        {data && <MaintenanceContent data={data} roleView={roleView} />}
       </DashboardShell>
     );
 }
 
-function MaintenanceContent({ data }: { data: OptimizedScheduleResponse }) {
+function MaintenanceContent({ data, roleView }: { data: OptimizedScheduleResponse; roleView: any }) {
 
     const { schedule, kpis, shift_date, constraints_summary } = data;
     const scheduledTasks = schedule.filter((t) => t.status === 'scheduled');
@@ -102,6 +106,7 @@ function MaintenanceContent({ data }: { data: OptimizedScheduleResponse }) {
             </div>
 
             {/* Bay Utilization Bars */}
+            {!roleView?.hiddenWidgets?.includes('maintenanceSchedule') && (
             <div className="p-5 bg-white rounded-lg border border-gray-200 shadow-sm">
                 <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Bay Utilization</h3>
                 <div className="space-y-3">
@@ -121,8 +126,10 @@ function MaintenanceContent({ data }: { data: OptimizedScheduleResponse }) {
                     ))}
                 </div>
             </div>
+            )}
 
             {/* Gantt Chart */}
+            {!roleView?.hiddenWidgets?.includes('maintenanceSchedule') && (
             <div className="p-5 bg-white rounded-lg border border-gray-200 shadow-sm">
                 <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Schedule Timeline (Gantt)</h3>
 
@@ -172,8 +179,10 @@ function MaintenanceContent({ data }: { data: OptimizedScheduleResponse }) {
                     ))}
                 </div>
             </div>
+            )}
 
             {/* Scheduled Tasks Table */}
+            {!roleView?.hiddenWidgets?.includes('workOrderList') && (
             <div className="p-5 bg-white rounded-lg border border-gray-200 shadow-sm">
                 <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">
                     Scheduled Tasks ({scheduledTasks.length})
@@ -215,6 +224,7 @@ function MaintenanceContent({ data }: { data: OptimizedScheduleResponse }) {
                     </table>
                 </div>
             </div>
+            )}
 
             {/* Delayed & Overflow */}
             {(delayedTasks.length > 0 || overflowTasks.length > 0) && (

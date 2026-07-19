@@ -8,69 +8,95 @@ from typing import List, Dict, Optional
 from pydantic import BaseModel
 from collections import defaultdict
 import threading
+from database import get_db_connection
 
 
 # ─── Multi-Fleet Depots ──────────────────────────────────────────────────────
 
 class Depot(BaseModel):
-    depot_id: str
+    id: str
     name: str
-    city: str
-    state: str
-    vehicle_count: int
+    code: str
     region: str
-    primary_use: str  # "logistics", "delivery", "long-haul"
-    manager: str
-
-
-DEPOTS: List[Depot] = [
-    Depot(depot_id="DEP-PUN-01", name="Pune Central Hub",       city="Pune",      state="Maharashtra", vehicle_count=42, region="West",  primary_use="logistics", manager="Anita Desai"),
-    Depot(depot_id="DEP-MUM-02", name="Mumbai Port Logistics",  city="Mumbai",    state="Maharashtra", vehicle_count=38, region="West",  primary_use="long-haul", manager="Rajesh Kulkarni"),
-    Depot(depot_id="DEP-BLR-03", name="Bangalore Tech Park",    city="Bangalore", state="Karnataka",   vehicle_count=25, region="South", primary_use="delivery",  manager="Priya Iyer"),
-    Depot(depot_id="DEP-DEL-04", name="Delhi NCR Distribution", city="Delhi",     state="Delhi",       vehicle_count=31, region="North", primary_use="delivery",  manager="Vikram Singh"),
-    Depot(depot_id="DEP-CHE-05", name="Chennai Manufacturing",  city="Chennai",   state="Tamil Nadu",  vehicle_count=18, region="South", primary_use="long-haul", manager="Karthik Raman"),
-]
+    lat: float
+    lng: float
+    timezone: str
+    vehicle_count: int
+    manager_name: str
+    charging_infra: dict
+    workshop_capacity: dict
 
 
 def get_all_depots() -> List[Depot]:
-    return DEPOTS
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM depots")
+    rows = cursor.fetchall()
+    conn.close()
+    
+    depots = []
+    for r in rows:
+        d = dict(r)
+        d['charging_infra'] = json.loads(d['charging_infra'])
+        d['workshop_capacity'] = json.loads(d['workshop_capacity'])
+        depots.append(Depot(**d))
+    return depots
 
 
-def get_depot_comparison() -> Dict:
+def get_depot_comparison(region: str = None) -> Dict:
     """Return a side-by-side comparison of all depots."""
-    rows = []
-    for d in DEPOTS:
-        # Deterministic per-depot metrics
-        seed = sum(ord(c) for c in d.depot_id)
-        soh_avg = 95 + (seed % 30) / 10.0  # 95.0 - 98.0
-        anomalies = seed % 5
-        cost = d.vehicle_count * 180000
-        rows.append({
-            "depot_id": d.depot_id,
-            "name": d.name,
-            "city": d.city,
-            "vehicle_count": d.vehicle_count,
-            "avg_soh": round(soh_avg, 1),
-            "active_anomalies": anomalies,
-            "monthly_cost_inr": cost,
-            "primary_use": d.primary_use,
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    query = "SELECT * FROM depots"
+    params = []
+    if region:
+        query += " WHERE region = ?"
+        params.append(region)
+        
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    
+    depots_list = []
+    for r in rows:
+        # Deterministic per-depot metrics based on id (since we don't have aggregates yet fully populated)
+        seed = sum(ord(c) for c in r["id"])
+        soh_avg = 80 + (seed % 20) / 10.0  # 80.0 - 99.0
+        availability = 70 + (seed % 25)
+        rul = 100 + (seed % 50)
+        
+        depots_list.append({
+            "id": r["id"],
+            "name": r["name"],
+            "code": r["code"],
+            "region": r["region"],
+            "vehicle_count": r["vehicle_count"],
+            "lat": r["lat"],
+            "lng": r["lng"],
+            "metrics": {
+                "avg_soh": round(soh_avg, 1),
+                "availability": round(availability, 1),
+                "rul": rul
+            }
         })
-    # Best / worst
-    best = max(rows, key=lambda r: r["avg_soh"])
-    worst = min(rows, key=lambda r: r["avg_soh"])
-    return {
-        "depots": rows,
-        "summary": {
-            "total_vehicles": sum(r["vehicle_count"] for r in rows),
-            "best_performer": best["name"],
-            "needs_attention": worst["name"],
-            "total_monthly_cost_inr": sum(r["monthly_cost_inr"] for r in rows),
-        },
-    }
+        
+    return {"depots": depots_list}
 
 
 def get_depot_by_id(depot_id: str) -> Optional[Depot]:
-    return next((d for d in DEPOTS if d.depot_id == depot_id), None)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM depots WHERE id = ?", (depot_id,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        d = dict(row)
+        d['charging_infra'] = json.loads(d['charging_infra'])
+        d['workshop_capacity'] = json.loads(d['workshop_capacity'])
+        return Depot(**d)
+    return None
 
 
 # ─── Role-Based Access Control ───────────────────────────────────────────────

@@ -1,20 +1,29 @@
 import { useState, useEffect } from 'react';
 import { fetchSupplyChain } from './api';
 import type { SupplyChainNode } from './api';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 
-export default function SupplyChainDashboard() {
+import 'leaflet/dist/leaflet.css';
+import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import { CommodityPriceWidget } from './components/CommodityPriceWidget';
+import { RiskScoreCard } from './components/RiskScoreCard';
+import { useAuth } from './AuthContext';
+
+
+export default function SupplyChainDashboard({ selectedDepotId }: { selectedDepotId: string | null }) {
+    const { roleView } = useAuth();
     const [nodes, setNodes] = useState<SupplyChainNode[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [mapReady, setMapReady] = useState(false);
+    const [selectedMaterial, setSelectedMaterial] = useState<string | null>(null);
 
     useEffect(() => {
-        fetchSupplyChain()
+        setLoading(true);
+        fetchSupplyChain(selectedDepotId)
             .then(setNodes)
             .catch((err) => setError(err.message))
             .finally(() => setLoading(false));
-    }, []);
+    }, [selectedDepotId]);
 
     if (loading) {
         return (
@@ -76,9 +85,15 @@ export default function SupplyChainDashboard() {
                 </div>
             </div>
 
+            {/* Commodity Price Feed */}
+            <div className="mb-6">
+                <CommodityPriceWidget />
+            </div>
+
             {/* Main Content Grid: Map + Risk Register */}
             <div className="grid grid-cols-12 gap-6">
                 {/* Left Column: Map */}
+                {!roleView?.hiddenWidgets?.includes('supplyChainMap') && (
                 <div className="col-span-8 p-6 bg-white rounded-xl border border-gray-100 shadow-sm">
                     <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium mb-4">Material Flow & Supplier Network</h3>
                     <div className="rounded-xl overflow-hidden shadow-sm border border-gray-100 relative" style={{ height: '600px', width: '100%' }}>
@@ -112,33 +127,52 @@ export default function SupplyChainDashboard() {
                         </MapContainer>
                     </div>
                 </div>
+                )}
 
-                {/* Right Column: Risk Register */}
-                <div className="col-span-4 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50 sticky top-0">
-                        <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Node Risk Register</h3>
-                    </div>
-                    <div className="divide-y divide-gray-50 overflow-y-auto" style={{ maxHeight: '600px' }}>
-                        {nodes.map((node, idx) => (
-                            <div key={idx} className="px-5 py-3.5 hover:bg-gray-50/50 transition-colors">
-                                {/* Top Line: Name + Risk badge */}
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium text-gray-800">{node.entity_name}</span>
-                                    <span className={`text-xs font-mono font-medium px-2 py-0.5 rounded-full ${node.composite_risk > 6 ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-600'}`}>
-                                        {node.composite_risk}/10
-                                    </span>
-                                </div>
-                                {/* Middle Line: Material + Country */}
-                                <div className="text-xs text-gray-400 mt-0.5">
-                                    {node.material} - {node.country} - Tier {node.tier}
-                                </div>
-                                {/* Bottom Line: Justification */}
-                                <div className="text-[11px] text-gray-500 leading-relaxed mt-1">
-                                    {node.risk_justification}
-                                </div>
+                {/* Right Column: Risk Register or Risk Score Card */}
+                <div className="col-span-4 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex flex-col" style={{ height: '600px' }}>
+                    {selectedMaterial ? (
+                        <div className="flex-1 flex flex-col overflow-hidden relative">
+                            <button 
+                                onClick={() => setSelectedMaterial(null)}
+                                className="absolute top-3 right-3 z-30 p-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-500 transition-colors"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                            <RiskScoreCard material={selectedMaterial} />
+                        </div>
+                    ) : (
+                        <>
+                            <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50 sticky top-0">
+                                <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Node Risk Register (Click to view sources)</h3>
                             </div>
-                        ))}
-                    </div>
+                            <div className="divide-y divide-gray-50 overflow-y-auto flex-1">
+                                {nodes.map((node, idx) => (
+                                    <div 
+                                        key={idx} 
+                                        className="px-5 py-3.5 hover:bg-gray-50/50 transition-colors cursor-pointer group"
+                                        onClick={() => setSelectedMaterial(node.material)}
+                                    >
+                                        {/* Top Line: Name + Risk badge */}
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm font-medium text-gray-800 group-hover:text-blue-600 transition-colors">{node.entity_name}</span>
+                                            <span className={`text-xs font-mono font-medium px-2 py-0.5 rounded-full ${node.composite_risk > 6 ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-600'}`}>
+                                                {node.composite_risk}/10
+                                            </span>
+                                        </div>
+                                        {/* Middle Line: Material + Country */}
+                                        <div className="text-xs text-gray-400 mt-0.5">
+                                            {node.material} - {node.country} - Tier {node.tier}
+                                        </div>
+                                        {/* Bottom Line: Justification */}
+                                        <div className="text-[11px] text-gray-500 leading-relaxed mt-1">
+                                            {node.risk_justification}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

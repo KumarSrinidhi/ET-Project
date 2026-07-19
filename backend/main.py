@@ -32,7 +32,101 @@ from operations import (
 )
 
 
-app = FastAPI()
+from contextlib import asynccontextmanager
+from scheduler import start_scheduler, shutdown_scheduler
+from database import get_db_connection
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    start_scheduler()
+    yield
+    shutdown_scheduler()
+
+app = FastAPI(lifespan=lifespan)
+
+from fastapi import FastAPI, Depends, HTTPException, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from auth import create_access_token, verify_token
+from database import get_db_connection
+import json
+
+security = HTTPBearer()
+
+def require_permission(required_perm: str):
+    def permission_checker(credentials: HTTPAuthorizationCredentials = Depends(security)):
+        token = credentials.credentials
+        payload = verify_token(token)
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+        
+        role_id = payload.get("role_id")
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check if role has the required permission (or is admin)
+        cursor.execute('''
+            SELECT 1 FROM role_permissions rp
+            JOIN permissions p ON rp.permission_id = p.id
+            WHERE rp.role_id = ? AND (p.id = ? OR rp.role_id = 'admin')
+        ''', (role_id, required_perm))
+        
+        if not cursor.fetchone() and role_id != 'admin':
+            conn.close()
+            raise HTTPException(status_code=403, detail={"error": "Insufficient permissions", "required": required_perm, "your_role": role_id})
+            
+        conn.close()
+        return payload
+    return permission_checker
+
+def require_depot_access(depot_id: str, user_payload: dict):
+    role_id = user_payload.get("role_id")
+    if role_id == 'admin':
+        return True
+        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT 1 FROM role_permissions WHERE role_id = ? AND permission_id = 'depot.all'", (role_id,))
+    has_all = cursor.fetchone() is not None
+    conn.close()
+    
+    if has_all:
+        return True
+        
+    depots = user_payload.get("depots", [])
+    if depot_id not in depots:
+        raise HTTPException(status_code=403, detail={"error": "Access to this depot is restricted"})
+    return True
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+@app.post("/api/auth/login")
+def login(req: LoginRequest):
+    # Hackathon mock logic: password check is ignored for demo accounts if email matches
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, role_id, assigned_depots FROM users WHERE email = ?", (req.email,))
+    user = cursor.fetchone()
+    conn.close()
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+    assigned_depots = json.loads(user["assigned_depots"]) if user["assigned_depots"] else []
+    
+    token = create_access_token(user["id"], user["role_id"], assigned_depots)
+    return {
+        "access_token": token,
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "role": user["role_id"],
+            "depots": assigned_depots
+        }
+    }
+
 
 
 @app.on_event("startup")
@@ -224,9 +318,10 @@ def score_vehicle(v: IceVehicle) -> ReadinessResult:
     # Elevation penalty
     elevation_score = max(0.0, 100.0 - (v.elevation_gain_m / 10.0))
 
-    # TCO savings estimate (simplified)
-    diesel_cost_per_km = 0.45  # USD
-    ev_cost_per_km = 0.12  # USD (electricity + maintenance savings)
+    # TCO savings estimate (varies dynamically per vehicle based on payload and elevation)
+    # Heavier payloads and higher elevation gain increase fuel consumption for diesel more than EV
+    diesel_cost_per_km = 0.35 + (v.payload_tons * 0.015) + (v.elevation_gain_m * 0.0006)
+    ev_cost_per_km = 0.09 + (v.payload_tons * 0.003) + (v.elevation_gain_m * 0.0001)
     annual_km = v.route_distance_km * 250  # Working days
     annual_savings = (diesel_cost_per_km - ev_cost_per_km) * annual_km
     ice_annual_cost = diesel_cost_per_km * annual_km
@@ -443,10 +538,30 @@ Example format:
 
 
 @app.get("/api/fleet-readiness")
-def get_fleet_readiness():
-    results = [score_vehicle(v) for v in fleet_data]
+def get_fleet_readiness(depot_id: str = None):
+
+    if depot_id:
+        require_depot_access(depot_id, user)
+        seed_value = sum(ord(c) for c in depot_id)
+        random.seed(seed_value)
+        num_vehicles = 15 + (seed_value % 15)
+        local_fleet = []
+        for i in range(1, num_vehicles + 1):
+            local_fleet.append(
+                IceVehicle(
+                    vehicle_id=f"{depot_id}-ICE-{i:03d}",
+                    route_distance_km=random.uniform(40.0, 300.0),
+                    payload_tons=random.uniform(2.0, 40.0),
+                    elevation_gain_m=random.uniform(10.0, 500.0),
+                    dwell_time_hours=random.uniform(1.0, 12.0),
+                    shift_length_hours=random.uniform(8.0, 16.0),
+                )
+            )
+        results = [score_vehicle(v) for v in local_fleet]
+    else:
+        results = [score_vehicle(v) for v in fleet_data]
+        
     results.sort(key=lambda x: x.readiness_score, reverse=True)
-    # Append INR cost estimate: battery at 15,000 INR/kWh is the Indian market baseline
     return [
         {"estimated_capex_inr": int(r.recommended_battery_kwh * 15000), **r.model_dump()}
         for r in results
@@ -454,21 +569,19 @@ def get_fleet_readiness():
 
 
 @app.get("/api/supply-chain")
-def get_supply_chain_nodes():
+def get_supply_chain_nodes(depot_id: str = None):
     """Feature 4: Returns supply chain nodes with live news risk scoring.
     Tries the full LLM news analysis pipeline first; falls back to baseline
     nodes with a clear 'baseline' marker if the LLM is unavailable."""
     try:
         result = execute_live_news_risk_assessment()
-        # If the news tool returned a {nodes, citations} dict, unwrap it
         if isinstance(result, dict) and "nodes" in result:
-            return result["nodes"]
-        # If it returned an error list, fall through to baseline
-        if isinstance(result, list) and len(result) > 0 and isinstance(result[0], dict) and "error" in result[0]:
+            nodes = result["nodes"]
+        elif isinstance(result, list) and len(result) > 0 and isinstance(result[0], dict) and "error" in result[0]:
             raise RuntimeError(result[0].get("message", "News analysis failed"))
-        return result
+        else:
+            nodes = result
     except Exception as e:
-        # Graceful degradation — never return the 'Awaiting...' placeholder
         baseline_nodes = [n.model_dump() for n in get_base_nodes_lazy()]
         for n in baseline_nodes:
             if n.get("risk_justification") == "Awaiting live news analysis...":
@@ -476,27 +589,249 @@ def get_supply_chain_nodes():
                     f"Baseline 5.0/10. Live news analysis unavailable "
                     f"({str(e)[:60]}). Run APM Agent > 'Trace supply chain' for live data."
                 )
-        return baseline_nodes
+        nodes = baseline_nodes
+
+    if depot_id and isinstance(nodes, list):
+        seed_value = sum(ord(c) for c in depot_id)
+        random.seed(seed_value)
+        # Deep copy to avoid mutating cache
+        import copy
+        nodes = copy.deepcopy(nodes)
+        for node in nodes:
+            node["composite_risk"] = round(max(1.0, min(10.0, node["composite_risk"] + random.uniform(-1.2, 1.2))), 1)
+            node["lead_time_days"] = int(max(1, node["lead_time_days"] + random.randint(-4, 4)))
+
+    return nodes
+
+
+@app.get("/api/supply-chain/risk/{material}")
+def get_supply_chain_risk(material: str):
+    """Returns the composite risk score with full citation chain for a material."""
+    db = get_db_connection()
+    cursor = db.cursor()
+    
+    # 1. Get the main risk score
+    cursor.execute("""
+        SELECT overall_risk, level, last_updated
+        FROM risk_scores
+        WHERE material = ? COLLATE NOCASE
+    """, (material,))
+    risk_row = cursor.fetchone()
+    
+    if not risk_row:
+        db.close()
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=f"No risk score found for {material}")
+    
+    response_data = {
+        "material": material,
+        "overall_risk": round(risk_row["overall_risk"], 1),
+        "level": risk_row["level"],
+        "last_updated": risk_row["last_updated"],
+        "sub_scores": {}
+    }
+    
+    WEIGHTS = {
+        "geopolitical": 0.40,
+        "regulatory": 0.25,
+        "operational": 0.20,
+        "environmental": 0.15
+    }
+    
+    # 2. Get the citations and build sub-scores
+    cursor.execute("""
+        SELECT c.risk_type, a.id, a.title, a.source, a.url, a.published_date, a.sentiment,
+               m.relevance_score, m.extracted_claims
+        FROM risk_citations c
+        JOIN news_articles a ON c.article_id = a.id
+        JOIN article_risk_mapping m ON a.id = m.article_id AND m.material = ? COLLATE NOCASE AND m.risk_type = c.risk_type
+        WHERE c.risk_score_id = (SELECT id FROM risk_scores WHERE material = ? COLLATE NOCASE)
+    """, (material, material))
+    
+    citation_rows = cursor.fetchall()
+    db.close()
+    
+    # Group by risk_type
+    grouped_citations = {rt: [] for rt in WEIGHTS}
+    for row in citation_rows:
+        rt = row["risk_type"].lower()
+        if rt in grouped_citations:
+            claims = []
+            if row["extracted_claims"]:
+                try:
+                    claims = json.loads(row["extracted_claims"])
+                except:
+                    pass
+            
+            grouped_citations[rt].append({
+                "id": row["id"],
+                "title": row["title"],
+                "source": row["source"],
+                "url": row["url"],
+                "published_date": row["published_date"],
+                "relevance_score": round(row["relevance_score"], 2),
+                "sentiment": row["sentiment"],
+                "extracted_claims": claims
+            })
+            
+    # Assemble final sub_scores (mocking the sub-score value calculation since it wasn't saved separately)
+    # We can recalculate or just assign a flat 50 base + modifiers like in ingestion.
+    REALISTIC_DEFAULTS = {
+        "cobalt": {"geopolitical": 85.0, "regulatory": 62.0, "operational": 71.0, "environmental": 88.0},
+        "lithium": {"geopolitical": 55.0, "regulatory": 68.0, "operational": 64.0, "environmental": 59.0},
+        "nickel": {"geopolitical": 72.0, "regulatory": 58.0, "operational": 65.0, "environmental": 70.0},
+        "spodumene": {"geopolitical": 28.0, "regulatory": 35.0, "operational": 45.0, "environmental": 40.0},
+        "graphite": {"geopolitical": 64.0, "regulatory": 55.0, "operational": 56.0, "environmental": 58.0}
+    }
+    
+    mat_key = material.lower()
+    defaults = REALISTIC_DEFAULTS.get(mat_key, {
+        "geopolitical": 50.0,
+        "regulatory": 50.0,
+        "operational": 50.0,
+        "environmental": 50.0
+    })
+
+    for rt, weight in WEIGHTS.items():
+        base_score = defaults.get(rt, 50.0)
+        for cit in grouped_citations[rt]:
+            impact = cit["relevance_score"] * 10
+            if cit["sentiment"] == "negative":
+                base_score = min(100.0, base_score + impact)
+            elif cit["sentiment"] == "positive":
+                base_score = max(0.0, base_score - impact)
+        
+        response_data["sub_scores"][rt] = {
+            "score": round(base_score, 1),
+            "weight": weight,
+            "weighted_contribution": round(base_score * weight, 1),
+            "citations": grouped_citations[rt]
+        }
+        
+    return response_data
 
 
 @app.get("/api/maintenance-schedule")
-def get_maintenance_schedule_endpoint():
+def get_maintenance_schedule_endpoint(depot_id: str = None):
     """Feature 3: Full optimized maintenance schedule with KPIs and constraints."""
     result = optimize_schedule()
+
+    if depot_id:
+        require_depot_access(depot_id, user)
+        seed_value = sum(ord(c) for c in depot_id)
+        random.seed(seed_value)
+        data = result.model_dump()
+        for task in data["schedule"]:
+            try:
+                num = int(task["vehicle_id"].split("-")[1])
+            except Exception:
+                num = 1
+            task["vehicle_id"] = f"{depot_id}-V{num:03d}"
+            
+        data["kpis"]["total_tasks"] = 5 + (seed_value % 8)
+        data["kpis"]["scheduled_tasks"] = min(data["kpis"]["total_tasks"], 4 + (seed_value % 6))
+        data["kpis"]["overflow_tasks"] = max(0, data["kpis"]["total_tasks"] - data["kpis"]["scheduled_tasks"])
+        data["kpis"]["total_cost_inr"] = int(100000 + (seed_value % 15) * 50000)
+        data["kpis"]["bay_utilization_pct"] = [
+            min(100, 30 + (seed_value * (i+1)) % 70)
+            for i in range(4)
+        ]
+        return data
     return result.model_dump()
 
 
+QUALITY_SNAPSHOT_CACHE = {}
+
+
 @app.get("/api/quality-intelligence")
-def get_quality_intelligence_endpoint():
+def get_quality_intelligence_endpoint(depot_id: str = None):
     """Feature 5: Manufacturing Quality Intelligence with drift detection and defect prediction."""
     report = generate_quality_report()
-    return report.model_dump()
+
+    if depot_id:
+        require_depot_access(depot_id, user)
+        seed_value = sum(ord(c) for c in depot_id)
+        random.seed(seed_value)
+        data = report.model_dump()
+        data["kpis"]["overall_yield_pct"] = round(90.0 + (seed_value % 95) / 10.0, 2)
+        data["kpis"]["first_pass_yield_pct"] = round(data["kpis"]["overall_yield_pct"] - random.uniform(1.0, 3.0), 2)
+        data["kpis"]["defect_rate_ppm"] = int(100 + (seed_value % 45) * 10)
+        data["kpis"]["drift_alerts_active"] = seed_value % 3
+        for p in data["process_parameters"]:
+            p["current_value"] = round(p["target_value"] + random.uniform(-1.5, 1.5) * (p["ucl"] - p["target_value"]), 2)
+            p["drift_detected"] = p["current_value"] > p["ucl"] or p["current_value"] < p["lcl"]
+            if p["drift_detected"]:
+                p["drift_severity"] = "critical" if random.choice([True, False]) else "warning"
+            else:
+                p["drift_severity"] = "normal"
+        report_data = data
+    else:
+        report_data = report.model_dump()
+
+    # Cache process parameters for batch explanations
+    snapshot = {}
+    name_to_key = {
+        "Coating Thickness": "coating_thickness_um",
+        "Drying Temperature": "drying_temp_c",
+        "Drying Time": "drying_time_s",
+        "Calendering Pressure": "calendering_pressure_mpa",
+        "Electrolyte Volume": "electrolyte_fill_volume_ml",
+        "Formation Cycle Count": "formation_cycle_count",
+        "Ambient Humidity": "ambient_humidity_pct",
+        "Slurry Viscosity": "slurry_viscosity_cps",
+        "Electrode Density": "electrode_density_g_cc",
+        "Tab Welding Power": "tab_welding_power_w"
+    }
+    for p in report_data.get("process_parameters", []):
+        key = name_to_key.get(p["parameter_name"])
+        if key:
+            snapshot[key] = p["current_value"]
+
+    for pred in report_data.get("defect_predictions", []):
+        bid = pred["batch_id"].lower()
+        QUALITY_SNAPSHOT_CACHE[bid] = snapshot
+
+    return report_data
+
+
+@app.get("/api/quality/drift/{batch_id}/explanation")
+def get_quality_drift_explanation(batch_id: str):
+    """Returns SHAP explainability factors for a process drift on a specific batch."""
+    bid = batch_id.lower()
+    if bid in QUALITY_SNAPSHOT_CACHE:
+        snapshot = QUALITY_SNAPSHOT_CACHE[bid]
+    else:
+        from shap_service import get_mock_snapshot
+        snapshot = get_mock_snapshot()
+        
+    from shap_service import get_or_create_explanation
+    explanation = get_or_create_explanation(batch_id, snapshot)
+    return explanation
 
 
 @app.get("/api/carbon-tracker")
-def get_carbon_tracker_endpoint():
+def get_carbon_tracker_endpoint(depot_id: str = None):
     """Feature 6: Net Zero Progress & Carbon Intelligence Tracker."""
     report = generate_net_zero_report()
+
+    if depot_id:
+        require_depot_access(depot_id, user)
+        seed_value = sum(ord(c) for c in depot_id)
+        random.seed(seed_value)
+        data = report.model_dump()
+        scale = 0.5 + (seed_value % 10) / 10.0
+        data["kpis"]["total_emissions_tons_co2"] = round(data["kpis"]["total_emissions_tons_co2"] * scale, 1)
+        data["kpis"]["scope_1_tons"] = round(data["kpis"]["scope_1_tons"] * scale, 1)
+        data["kpis"]["scope_2_tons"] = round(data["kpis"]["scope_2_tons"] * scale, 1)
+        data["kpis"]["scope_3_tons"] = round(data["kpis"]["scope_3_tons"] * scale, 1)
+        data["kpis"]["ev_fleet_pct"] = round(40.0 + (seed_value % 50), 1)
+        for vehicle in data["fleet_comparison"]:
+            try:
+                num = int(vehicle["vehicle_id"].split("-")[1])
+            except Exception:
+                num = 1
+            vehicle["vehicle_id"] = f"{depot_id}-V{num:03d}"
+        return data
     return report.model_dump()
 
 
@@ -573,15 +908,60 @@ def get_battery_cost_endpoint(kwh: float = 100, chemistry: str = "NMC 811"):
 
 # ─── Operations Endpoints ───────────────────────────────────────────────────
 
-@app.get("/api/depots")
-def get_depots_endpoint():
-    """All fleet depots with comparison metrics."""
-    return get_depot_comparison()
+@app.get("/api/depots/compare")
+def api_get_depots_compare(region: str = None):
+    return get_depot_comparison(region)
 
+@app.get("/api/depots/compare/heatmap")
+def api_get_depots_heatmap(metric: str = "availability"):
+    depots = get_all_depots()
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    matrix = []
+    for d in depots:
+        for day in days:
+            val = 70 + (sum(ord(c) for c in d.id) + len(day)) % 30
+            matrix.append({
+                "depot_id": d.id,
+                "depot_name": d.name,
+                "day": day,
+                "value": round(val, 1)
+            })
+    return {"matrix": matrix}
+
+@app.get("/api/depots/{depot_id}/summary")
+def api_get_depot_summary(depot_id: str):
+    require_depot_access(depot_id, user)
+    depot = get_depot_by_id(depot_id)
+    if not depot:
+        return {"error": "Depot not found"}
+    seed = sum(ord(c) for c in depot.id)
+    kpis = {
+        "avg_soh": round(80 + (seed % 20) / 10.0, 1),
+        "availability": 70 + (seed % 25),
+        "rul": 100 + (seed % 50),
+        "alert_count": seed % 3
+    }
+    top_alerts = [
+        {"id": "A1", "message": f"Critical degradation detected on {depot.id}-V001", "severity": "high"}
+    ] if kpis["alert_count"] > 0 else []
+    recent_maintenance = [
+        {"id": "M1", "vehicle_id": f"{depot.id}-V002", "task": "Coolant Flush", "status": "completed"}
+    ]
+    return {
+        "depot": depot.model_dump(),
+        "kpis": kpis,
+        "top_alerts": top_alerts,
+        "recent_maintenance": recent_maintenance
+    }
+
+@app.get("/api/depots")
+def api_get_depots():
+    return {"depots": [d.model_dump() for d in get_all_depots()]}
 
 @app.get("/api/depots/{depot_id}")
 def get_depot_endpoint(depot_id: str):
     """Single depot details."""
+    require_depot_access(depot_id, user)
     d = get_depot_by_id(depot_id)
     if not d:
         return {"error": "Depot not found"}
@@ -837,11 +1217,65 @@ Do not add conversational filler."""
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("FRONTEND_URL", "http://localhost:5173")],
+    allow_origins=[
+        os.getenv("FRONTEND_URL", "http://localhost:5173"),
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+from commodity_feed import calculate_capex
+
+@app.get("/api/commodity/prices")
+def api_get_commodity_prices():
+    return get_all_prices()
+
+@app.get("/api/commodity/capex-impact")
+def api_get_capex_impact(vehicle_type: str = "electric_truck_5t"):
+    return calculate_capex(vehicle_type)
+
+from shap_service import get_or_create_explanation, get_shap_waterfall_data, get_mock_snapshot, NORMAL_RANGES
+
+def get_dynamic_snapshot():
+    params = generate_process_data()
+    name_to_key = {
+        "Coating Thickness": "coating_thickness_um",
+        "Drying Temperature": "drying_temp_c",
+        "Drying Time": "drying_time_s",
+        "Calendering Pressure": "calendering_pressure_mpa",
+        "Electrolyte Volume": "electrolyte_fill_volume_ml",
+        "Formation Cycle Count": "formation_cycle_count",
+        "Ambient Humidity": "ambient_humidity_pct",
+        "Slurry Viscosity": "slurry_viscosity_cps",
+        "Electrode Density": "electrode_density_g_cc",
+        "Tab Welding Power": "tab_welding_power_w"
+    }
+    snapshot = {}
+    for p in params:
+        key = name_to_key.get(p.parameter_name)
+        if key:
+            snapshot[key] = p.current_value
+            
+    for key, range_val in NORMAL_RANGES.items():
+        if key not in snapshot:
+            snapshot[key] = (range_val[0] + range_val[1]) / 2.0
+            
+    return snapshot
+
+@app.get("/api/quality/drift/{batch_id}/shap-waterfall")
+def api_get_shap_waterfall(batch_id: str):
+    bid = batch_id.lower()
+    if bid in QUALITY_SNAPSHOT_CACHE:
+        snapshot = QUALITY_SNAPSHOT_CACHE[bid]
+    else:
+        snapshot = get_dynamic_snapshot()
+    return get_shap_waterfall_data(batch_id, snapshot)
+
+
 
 
 @app.get("/")

@@ -70,11 +70,35 @@ def fetch_real_coordinates(entity_name: str, country: str, search_query: str) ->
     return FALLBACK_COORDS.get(entity_name, (0.0, 0.0))
 
 def get_base_nodes() -> List[SupplyNode]:
-    """Gets nodes with real coordinates but baseline risk."""
+    """Gets nodes with dynamically calculated realistic risks based on ESG and lead times."""
     nodes = []
     for entity in RAW_ENTITIES:
         lat, lon = fetch_real_coordinates(entity["entity_name"], entity["country"], entity["search_query"])
         time.sleep(0.5)  # Rate limit if hitting OSM
+
+        # Calculate a realistic risk score out of 10
+        # Formula: higher lead time increases risk, lower ESG increases risk
+        esg = entity["esg"]
+        lead_time = entity["lead_time"]
+        
+        raw_risk = ((10.0 - esg) * 0.6) + ((lead_time / 10.0) * 0.4)
+        composite_risk = round(max(1.0, min(10.0, raw_risk)), 1)
+        
+        # Build a descriptive justification based on factors
+        if entity["country"] == "DRC":
+            justification = f"High exposure to geopolitical and environmental risk in Katanga. Lead time is {lead_time} days; ESG compliance is low ({esg}/10)."
+        elif entity["country"] == "China":
+            justification = f"Concentrated processing capacity. Heavy reliance on local regulatory alignment. Lead time: {lead_time} days, ESG: {esg}/10."
+        elif entity["country"] == "Chile":
+            justification = f"Water scarcity risk affecting lithium extraction. Logistics lead time is elevated at {lead_time} days. ESG: {esg}/10."
+        elif entity["country"] == "Indonesia":
+            justification = f"Regulatory risk from nickel export quotas and environmental scrutiny on coal-powered smelting. Lead time: {lead_time} days."
+        elif entity["country"] == "Australia":
+            justification = f"Stable operating environment and strong regulatory framework. Low risk primarily driven by long transit route."
+        elif entity["country"] == "Belgium":
+            justification = f"Low risk refining operations with excellent ESG standards ({esg}/10) and stable regulatory environment."
+        else:
+            justification = f"Stable regional footprint with standard logistical lead time of {lead_time} days. High ESG compliance."
 
         nodes.append(SupplyNode(
             entity_name=entity["entity_name"],
@@ -83,10 +107,10 @@ def get_base_nodes() -> List[SupplyNode]:
             country=entity["country"],
             latitude=lat,
             longitude=lon,
-            composite_risk=5.0,  # Baseline
-            risk_justification="Awaiting live news analysis...",
-            esg_score=entity["esg"],
-            lead_time_days=entity["lead_time"],
+            composite_risk=composite_risk,
+            risk_justification=justification,
+            esg_score=esg,
+            lead_time_days=lead_time,
             criticality=entity["criticality"],
         ))
     return nodes
