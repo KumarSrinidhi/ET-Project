@@ -539,7 +539,7 @@ Example format:
 
 
 @app.get("/api/fleet-readiness")
-def get_fleet_readiness(depot_id: str = None):
+def get_fleet_readiness(depot_id: str = None, user: dict = Depends(require_permission("fleet.health.view"))):
 
     if depot_id:
         require_depot_access(depot_id, user)
@@ -713,7 +713,7 @@ def get_supply_chain_risk(material: str):
 
 
 @app.get("/api/maintenance-schedule")
-def get_maintenance_schedule_endpoint(depot_id: str = None):
+def get_maintenance_schedule_endpoint(depot_id: str = None, user: dict = Depends(require_permission("fleet.maintenance.view"))):
     """Feature 3: Full optimized maintenance schedule with KPIs and constraints."""
     result = optimize_schedule()
 
@@ -745,7 +745,7 @@ QUALITY_SNAPSHOT_CACHE = {}
 
 
 @app.get("/api/quality-intelligence")
-def get_quality_intelligence_endpoint(depot_id: str = None):
+def get_quality_intelligence_endpoint(depot_id: str = None, user: dict = Depends(require_permission("quality.qms.view"))):
     """Feature 5: Manufacturing Quality Intelligence with drift detection and defect prediction."""
     report = generate_quality_report()
 
@@ -811,7 +811,7 @@ def get_quality_drift_explanation(batch_id: str):
 
 
 @app.get("/api/carbon-tracker")
-def get_carbon_tracker_endpoint(depot_id: str = None):
+def get_carbon_tracker_endpoint(depot_id: str = None, user: dict = Depends(require_permission("carbon.dashboard.view"))):
     """Feature 6: Net Zero Progress & Carbon Intelligence Tracker."""
     report = generate_net_zero_report()
 
