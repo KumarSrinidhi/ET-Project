@@ -41,7 +41,8 @@ export default function LiveAlerts() {
     useEffect(() => {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.hostname || 'localhost';
-        const port = (import.meta as any).env?.VITE_API_PORT || '8000';
+        const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000';
+        const port = new URL(apiUrl).port || '8000';
         const url = `${protocol}//${host}:${port}/api/alerts/stream`;
 
         let reconnectTimer: number | undefined;

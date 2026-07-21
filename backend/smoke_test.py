@@ -41,7 +41,7 @@ def main() -> int:
     client = TestClient(backend.app)
 
     # Login
-    r = client.post("/api/auth/login", json={"email": "admin", "password": "admin"})
+    r = client.post("/api/auth/login", json={"email": "admin@demo.com", "password": "admin"})
     token = r.json().get("access_token") if r.status_code == 200 else None
     if not token:
         print(f"FAIL: login failed — {r.text[:200]}")

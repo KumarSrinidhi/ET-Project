@@ -158,7 +158,8 @@ def seed_rbac(cursor):
     users = [
         ("proc_user", "Procurement User", "procurement@demo.com", "procurement", assigned_depots_proc, 1),
         ("maint_user", "Maintenance User", "maintenance@demo.com", "maintenance", assigned_depots_maint, 1),
-        ("exec_user", "Executive User", "executive@demo.com", "executive", "[]", 1)
+        ("exec_user", "Executive User", "executive@demo.com", "executive", "[]", 1),
+        ("admin_user", "System Administrator", "admin@demo.com", "admin", "[]", 1)
     ]
     cursor.executemany('INSERT INTO users (id, name, email, role_id, assigned_depots, active) VALUES (?, ?, ?, ?, ?, ?)', users)
 

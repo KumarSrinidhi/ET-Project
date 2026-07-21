@@ -117,7 +117,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const demoEmails: Record<string, string> = {
       procurement: 'procurement@demo.com',
       maintenance: 'maintenance@demo.com',
-      executive: 'executive@demo.com'
+      executive: 'executive@demo.com',
+      admin: 'admin@demo.com'
     };
     const email = demoEmails[role];
     if (email) {

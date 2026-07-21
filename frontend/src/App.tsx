@@ -36,6 +36,7 @@ export default function App() {
   const [selectedDepotId, setSelectedDepotId] = useState<string | null>(null);
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [showRoleMenu, setShowRoleMenu] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Sync Path
   useEffect(() => {
@@ -137,8 +138,16 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      {/* Mobile sidebar overlay */}
+      {mobileSidebarOpen && (
+        <div className="fixed inset-0 z-30 bg-black/50 md:hidden" onClick={() => setMobileSidebarOpen(false)} />
+      )}
+
       {/* Sidebar Navigation */}
-      <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col shadow-xl z-20 hidden md:flex shrink-0">
+      <aside className={`w-64 bg-slate-900 text-slate-300 flex flex-col shadow-xl z-40 shrink-0
+        fixed inset-y-0 left-0 transform transition-transform duration-200 ease-in-out
+        md:relative md:translate-x-0 md:flex
+        ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6">
           <div className="flex items-center gap-3 text-white mb-2">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -156,7 +165,7 @@ export default function App() {
             return (
               <button
                 key={item.path}
-                onClick={() => navigate(item.path)}
+                onClick={() => { navigate(item.path); setMobileSidebarOpen(false); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm font-medium
                   ${isActive ? 'bg-blue-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}
               >
@@ -183,7 +192,7 @@ export default function App() {
         {/* Top Header */}
         <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 shrink-0 z-10">
           <div className="flex items-center gap-4">
-            <button className="md:hidden text-gray-500 hover:text-gray-900">
+            <button className="md:hidden text-gray-500 hover:text-gray-900" onClick={() => setMobileSidebarOpen(true)}>
               <Menu className="w-6 h-6" />
             </button>
             <DepotSelector selectedDepotId={selectedDepotId} onSelectDepot={setSelectedDepotId} />

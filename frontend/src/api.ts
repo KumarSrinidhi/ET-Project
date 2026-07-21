@@ -442,7 +442,7 @@ export interface CostPrediction {
 
 export const fetchCostPrediction = async (vehicleId: string): Promise<CostPrediction> => {
   const r = await axios.post(`${BASE}/api/maintenance/cost-prediction/${vehicleId}`);
-  return r.data.results;
+  return r.data;
 };
 
 // ─── What-If Carbon Simulator ───────────────────────────────────────────────
@@ -465,23 +465,6 @@ export const simulateCarbon = async (ev: number, renewable: number, scope3: numb
 // ─── Operations: Depots, RBAC, Audit Log, Approvals ─────────────────────────
 
 export interface Depot {
-  depot_id: string;
-  name: string;
-  city: string;
-  state: string;
-  vehicle_count: number;
-  region: string;
-  primary_use: string;
-  manager: string;
-}
-
-export interface DepotComparisonRow extends Depot {
-  avg_soh: number;
-  active_anomalies: number;
-  monthly_cost_inr: number;
-}
-
-export interface Depot {
   id: string;
   name: string;
   code: string;
@@ -493,6 +476,21 @@ export interface Depot {
   manager_name: string;
   charging_infra: Record<string, any>;
   workshop_capacity: Record<string, any>;
+}
+
+export interface DepotComparisonRow {
+  id: string;
+  name: string;
+  code: string;
+  region: string;
+  vehicle_count: number;
+  lat: number;
+  lng: number;
+  metrics: {
+    avg_soh: number;
+    availability: number;
+    rul: number;
+  };
 }
 
 export const fetchAllDepots = async (): Promise<{ depots: Depot[] }> => {

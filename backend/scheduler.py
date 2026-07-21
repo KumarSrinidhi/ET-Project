@@ -95,13 +95,16 @@ async def broadcast_alert(alert: Alert):
 
 
 def broadcast_alert_sync(alert: Alert):
-    """Sync version for use in non-async contexts (background jobs)."""
+    """Sync version for use in non-async contexts (background jobs).
+    Creates a new event loop in the background thread to broadcast."""
     import asyncio
     try:
         loop = asyncio.get_running_loop()
+        loop.create_task(broadcast_alert(alert))
     except RuntimeError:
-        return  # no loop, skip
-    loop.create_task(broadcast_alert(alert))
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(broadcast_alert(alert))
+        loop.close()
 
 
 # ─── Periodic Jobs ────────────────────────────────────────────────────────────

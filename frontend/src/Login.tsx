@@ -120,6 +120,13 @@ const Login: React.FC = () => {
                 <span>Executive Role</span>
                 <span className="text-slate-500">executive@demo.com</span>
               </button>
+              <button
+                onClick={() => fillDemo('admin@demo.com')}
+                className="px-4 py-2 text-sm bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition-colors flex justify-between"
+              >
+                <span>Admin Role</span>
+                <span className="text-slate-500">admin@demo.com</span>
+              </button>
             </div>
           </div>
         </div>

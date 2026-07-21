@@ -91,12 +91,12 @@ export default function SupplyChainDashboard({ selectedDepotId }: { selectedDepo
             </div>
 
             {/* Main Content Grid: Map + Risk Register */}
-            <div className="grid grid-cols-12 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* Left Column: Map */}
                 {!roleView?.hiddenWidgets?.includes('supplyChainMap') && (
-                <div className="col-span-8 p-6 bg-white rounded-xl border border-gray-100 shadow-sm">
+                <div className="lg:col-span-8 p-6 bg-white rounded-xl border border-gray-100 shadow-sm">
                     <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium mb-4">Material Flow & Supplier Network</h3>
-                    <div className="rounded-xl overflow-hidden shadow-sm border border-gray-100 relative" style={{ height: '600px', width: '100%' }}>
+                    <div className="rounded-xl overflow-hidden shadow-sm border border-gray-100 relative lg:h-[600px] h-[350px] w-full">
                         {!mapReady && (
                             <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-100">
                                 <div className="text-center">
@@ -130,7 +130,7 @@ export default function SupplyChainDashboard({ selectedDepotId }: { selectedDepo
                 )}
 
                 {/* Right Column: Risk Register or Risk Score Card */}
-                <div className="col-span-4 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex flex-col" style={{ height: '600px' }}>
+                <div className="lg:col-span-4 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex flex-col lg:h-[600px] h-[400px]">
                     {selectedMaterial ? (
                         <div className="flex-1 flex flex-col overflow-hidden relative">
                             <button 

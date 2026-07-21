@@ -839,10 +839,10 @@ def get_carbon_tracker_endpoint(depot_id: str = None, user: dict = Depends(requi
 # ─── Trust & Explainability Endpoints ────────────────────────────────────────
 
 @app.get("/api/shap/cpk")
-def get_shap_for_cpk():
+def get_shap_for_cpk(user: dict = Depends(require_permission("quality.qms.view"))):
     """SHAP-style per-parameter contribution to overall Cpk score."""
     params = generate_process_data()
-    return shap_for_cpk(params)
+    return shap_for_cpk([p.model_dump() for p in params])
 
 
 @app.get("/api/forecast/thermal/{vehicle_id}")

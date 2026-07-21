@@ -28,10 +28,17 @@ export default function MaintenanceDashboard({ selectedDepotId }: { selectedDepo
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>(() => {
-        // Auto-pick mobile view when the viewport is narrow
         if (typeof window !== 'undefined') return window.innerWidth < 768 ? 'mobile' : 'desktop';
         return 'desktop';
     });
+
+    useEffect(() => {
+        const handleResize = () => {
+            setViewMode(window.innerWidth < 768 ? 'mobile' : 'desktop');
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         setLoading(true);
