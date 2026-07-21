@@ -930,7 +930,7 @@ def api_get_depots_heatmap(metric: str = "availability"):
     return {"matrix": matrix}
 
 @app.get("/api/depots/{depot_id}/summary")
-def api_get_depot_summary(depot_id: str):
+def api_get_depot_summary(depot_id: str, user: dict = Depends(require_permission("fleet.health.view"))):
     require_depot_access(depot_id, user)
     depot = get_depot_by_id(depot_id)
     if not depot:
@@ -960,7 +960,7 @@ def api_get_depots():
     return {"depots": [d.model_dump() for d in get_all_depots()]}
 
 @app.get("/api/depots/{depot_id}")
-def get_depot_endpoint(depot_id: str):
+def get_depot_endpoint(depot_id: str, user: dict = Depends(require_permission("fleet.health.view"))):
     """Single depot details."""
     require_depot_access(depot_id, user)
     d = get_depot_by_id(depot_id)
