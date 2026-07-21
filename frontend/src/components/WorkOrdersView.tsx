@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { fetchWorkOrders, updateWorkOrder, createWorkOrder, fetchMaintenanceSchedule } from '../api';
 import type { WorkOrder, ScheduledTask } from '../api';
-import { Wrench, Plus, Clock, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { Wrench, Plus, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
 
 const STATUS_COLORS: Record<string, string> = {
     scheduled: 'bg-blue-100 text-blue-800',
