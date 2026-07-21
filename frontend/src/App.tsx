@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchFleetReadiness } from './api';
+import { fetchFleetReadiness, queryApmAgent } from './api';
 import type { ReadinessResult } from './api';
 import L from 'leaflet';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -17,6 +17,7 @@ import SupplyChainDashboard from './SupplyChainDashboard';
 import DepotSelector from './components/DepotSelector';
 import FleetComparisonDashboard from './components/FleetComparisonDashboard';
 import ExecutiveDashboard from './ExecutiveDashboard';
+import ApmAgentView from './components/ApmAgentView';
 import Login from './Login';
 import { useAuth } from './AuthContext';
 import { LogOut, User as UserIcon, ChevronDown, Menu } from 'lucide-react';
@@ -137,6 +138,7 @@ export default function App() {
     }
     if (currentPath === '/commodity') return <ErrorBoundary><IntelligenceView /></ErrorBoundary>;
     if (currentPath === '/analytics') return <ErrorBoundary><BusinessAnalyticsView /></ErrorBoundary>;
+    if (currentPath === '/apm-agent') return <ErrorBoundary><ApmAgentView queryApmAgent={queryApmAgent} /></ErrorBoundary>;
 
     // Default fallback
     return <div className="p-8 text-center text-gray-500">Page under construction</div>;

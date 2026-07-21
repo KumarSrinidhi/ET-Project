@@ -23,7 +23,8 @@ const ROLE_VIEWS: Record<string, RoleView> = {
       { label: "Commodity Prices", path: "/commodity", icon: "TrendingUp" },
       { label: "Quality Dashboard", path: "/quality", icon: "CheckCircle" },
       { label: "Carbon Overview", path: "/carbon", icon: "Leaf" },
-      { label: "Business Analytics", path: "/analytics", icon: "BarChart3" }
+      { label: "Business Analytics", path: "/analytics", icon: "BarChart3" },
+      { label: "APM AI Agent", path: "/apm-agent", icon: "Bot" }
     ],
     defaultRoute: "/procurement",
     hiddenWidgets: ["maintenanceSchedule", "workOrderList", "technicianView"],
@@ -36,7 +37,8 @@ const ROLE_VIEWS: Record<string, RoleView> = {
       { label: "Work Orders", path: "/maintenance/orders", icon: "Tool" },
       { label: "Parts Inventory", path: "/maintenance/parts", icon: "Box" },
       { label: "Mobile View", path: "/maintenance/mobile", icon: "Smartphone" },
-      { label: "Business Analytics", path: "/analytics", icon: "BarChart3" }
+      { label: "Business Analytics", path: "/analytics", icon: "BarChart3" },
+      { label: "APM AI Agent", path: "/apm-agent", icon: "Bot" }
     ],
     defaultRoute: "/fleet/health",
     hiddenWidgets: ["commodityPrices", "supplyChainMap", "carbonTracker"],
@@ -48,7 +50,8 @@ const ROLE_VIEWS: Record<string, RoleView> = {
       { label: "Carbon & Net Zero", path: "/carbon", icon: "Leaf" },
       { label: "Fleet Overview", path: "/fleet/health", icon: "Activity" },
       { label: "Supply Chain Risk", path: "/supply-chain", icon: "Globe" },
-      { label: "Business Analytics", path: "/analytics", icon: "BarChart3" }
+      { label: "Business Analytics", path: "/analytics", icon: "BarChart3" },
+      { label: "APM AI Agent", path: "/apm-agent", icon: "Bot" }
     ],
     defaultRoute: "/executive",
     hiddenWidgets: [],
@@ -63,7 +66,8 @@ const ROLE_VIEWS: Record<string, RoleView> = {
       { label: "Supply Chain", path: "/supply-chain", icon: "Globe" },
       { label: "Quality", path: "/quality", icon: "CheckCircle" },
       { label: "Carbon & Net Zero", path: "/carbon", icon: "Leaf" },
-      { label: "Business Analytics", path: "/analytics", icon: "BarChart3" }
+      { label: "Business Analytics", path: "/analytics", icon: "BarChart3" },
+      { label: "APM AI Agent", path: "/apm-agent", icon: "Bot" }
     ],
     defaultRoute: "/executive",
     hiddenWidgets: [],
