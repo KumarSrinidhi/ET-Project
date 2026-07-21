@@ -874,6 +874,16 @@ def get_cost_prediction(vehicle_id: str):
     return predict_replacement_cost(vehicle_id, health.current_soh, health.degradation_rate_per_day, cost)
 
 
+# ─── Battery Material Passport ──────────────────────────────────────────────
+
+@app.get("/api/battery-passport/{vehicle_id}")
+def get_battery_passport(vehicle_id: str, user: dict = Depends(require_permission("fleet.health.view"))):
+    """EU Battery Regulation 2027 compliant digital battery passport.
+    Traces a vehicle's battery from mine to vehicle with full provenance data."""
+    from battery_passport import assemble_battery_passport
+    return assemble_battery_passport(vehicle_id)
+
+
 # ─── What-If Carbon Simulator ───────────────────────────────────────────────
 
 class WhatIfRequest(BaseModel):

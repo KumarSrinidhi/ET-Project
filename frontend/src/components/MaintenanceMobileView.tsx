@@ -7,16 +7,16 @@ interface Props {
 }
 
 const PRIORITY_BADGE: Record<string, string> = {
-    critical: 'bg-red-50 text-red-700 border-red-200',
-    high: 'bg-orange-50 text-orange-700 border-orange-200',
-    medium: 'bg-gray-100 text-gray-700 border-gray-300',
-    low: 'bg-gray-50 text-gray-600 border-gray-200',
+    critical: 'bg-status-critical-bg text-status-critical-fg border-status-critical-border',
+    high: 'bg-status-warning-bg text-status-warning-fg border-status-warning-border',
+    medium: 'bg-canvas-sunken text-ink border-hairline-strong',
+    low: 'bg-canvas text-ink-muted border-hairline',
 };
 
 const PRIORITY_DOT: Record<string, string> = {
-    critical: 'bg-red-500',
-    high: 'bg-orange-500',
-    medium: 'bg-yellow-500',
+    critical: 'bg-status-critical-fg',
+    high: 'bg-status-warning-fg',
+    medium: 'bg-status-warning-fg',
     low: 'bg-gray-400',
 };
 
@@ -44,15 +44,15 @@ export default function MaintenanceMobileView({ selectedDepotId }: Props) {
         return (
             <div className="p-6 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <span className="ml-3 text-sm text-gray-500">Loading tasks...</span>
+                <span className="ml-3 text-sm text-ink-muted">Loading tasks...</span>
             </div>
         );
     }
 
     if (error || !data) {
         return (
-            <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-700">Failed to load schedule: {error}</p>
+            <div className="p-6 bg-status-critical-bg border border-status-critical-border rounded-lg">
+                <p className="text-sm text-status-critical-fg">Failed to load schedule: {error}</p>
             </div>
         );
     }
@@ -90,22 +90,22 @@ export default function MaintenanceMobileView({ selectedDepotId }: Props) {
     return (
         <div className="space-y-4 pb-20">
             {/* Sticky header card */}
-            <div className="sticky top-0 z-10 -mx-4 px-4 py-3 bg-white border-b border-gray-200 shadow-sm">
+            <div className="sticky top-0 z-10 -mx-4 px-4 py-3 bg-canvas border-b border-hairline shadow-sm">
                 <div className="flex items-center justify-between mb-2">
                     <div>
-                        <h2 className="text-lg font-bold text-gray-900 tracking-tight">My Tasks</h2>
-                        <p className="text-[11px] text-gray-500 font-mono uppercase tracking-wider">
+                        <h2 className="text-lg font-bold text-ink tracking-tight">My Tasks</h2>
+                        <p className="text-[11px] text-ink-muted font-mono uppercase tracking-wider">
                             Shift {data.shift_date} · Bay assignments below
                         </p>
                     </div>
                     <div className="text-right">
-                        <p className="text-2xl font-bold font-mono text-gray-900">{completedCount}/{totalCount}</p>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wider">Completed</p>
+                        <p className="text-2xl font-bold font-mono text-ink">{completedCount}/{totalCount}</p>
+                        <p className="text-[10px] text-ink-faint uppercase tracking-wider">Completed</p>
                     </div>
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-1.5">
+                <div className="w-full bg-canvas-sunken rounded-full h-1.5">
                     <div
-                        className="h-1.5 rounded-full bg-gray-900 transition-all"
+                        className="h-1.5 rounded-full bg-graphite-900 transition-all"
                         style={{ width: totalCount > 0 ? `${(completedCount / totalCount) * 100}%` : '0%' }}
                     />
                 </div>
@@ -113,8 +113,8 @@ export default function MaintenanceMobileView({ selectedDepotId }: Props) {
 
             {/* Task cards */}
             {myTasks.length === 0 ? (
-                <div className="p-8 text-center bg-gray-50 rounded-lg border border-gray-100">
-                    <p className="text-sm text-gray-500">No tasks assigned to you for this shift.</p>
+                <div className="p-8 text-center bg-canvas rounded-lg border border-hairline">
+                    <p className="text-sm text-ink-muted">No tasks assigned to you for this shift.</p>
                 </div>
             ) : myTasks.map(task => {
                 const isChecked = checkedTasks.has(task.task_id);
@@ -123,19 +123,19 @@ export default function MaintenanceMobileView({ selectedDepotId }: Props) {
                 return (
                     <div
                         key={task.task_id}
-                        className={`bg-white rounded-xl border shadow-sm overflow-hidden transition-opacity ${
-                            isChecked ? 'opacity-50 border-gray-200' : 'border-gray-200'
+                        className={`bg-canvas rounded-xl border shadow-sm overflow-hidden transition-opacity ${
+                            isChecked ? 'opacity-50 border-hairline' : 'border-hairline'
                         }`}
                     >
                         {/* Card header */}
-                        <div className="px-4 py-3 border-b border-gray-100 flex items-start justify-between gap-3">
+                        <div className="px-4 py-3 border-b border-hairline flex items-start justify-between gap-3">
                             <div className="flex items-start gap-3 flex-1">
                                 <div className={`w-3 h-3 rounded-full mt-1.5 shrink-0 ${PRIORITY_DOT[task.priority]}`} />
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold text-gray-900 truncate">
+                                    <p className="text-sm font-semibold text-ink truncate">
                                         {task.vehicle_id}
                                     </p>
-                                    <p className="text-xs text-gray-500 truncate">{task.task_type}</p>
+                                    <p className="text-xs text-ink-muted truncate">{task.task_type}</p>
                                 </div>
                             </div>
                             <span className={`shrink-0 text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded-full border ${PRIORITY_BADGE[task.priority]}`}>
@@ -146,31 +146,31 @@ export default function MaintenanceMobileView({ selectedDepotId }: Props) {
                         {/* Card body — stack of key facts */}
                         <div className="px-4 py-3 space-y-2">
                             <div className="flex items-center justify-between text-xs">
-                                <span className="text-gray-500 uppercase tracking-wider text-[10px]">Bay</span>
-                                <span className="font-medium text-gray-900">{task.bay_name}</span>
+                                <span className="text-ink-muted uppercase tracking-wider text-[10px]">Bay</span>
+                                <span className="font-medium text-ink">{task.bay_name}</span>
                             </div>
                             <div className="flex items-center justify-between text-xs">
-                                <span className="text-gray-500 uppercase tracking-wider text-[10px]">Technician</span>
-                                <span className="font-medium text-gray-900">{task.technician_name}</span>
+                                <span className="text-ink-muted uppercase tracking-wider text-[10px]">Technician</span>
+                                <span className="font-medium text-ink">{task.technician_name}</span>
                             </div>
                             <div className="flex items-center justify-between text-xs">
-                                <span className="text-gray-500 uppercase tracking-wider text-[10px]">Time</span>
-                                <span className="font-mono font-medium text-gray-900">
+                                <span className="text-ink-muted uppercase tracking-wider text-[10px]">Time</span>
+                                <span className="font-mono font-medium text-ink">
                                     {task.start_hour}:00 – {task.end_hour}:00
                                 </span>
                             </div>
                             <div className="flex items-center justify-between text-xs">
-                                <span className="text-gray-500 uppercase tracking-wider text-[10px]">Cost</span>
-                                <span className="font-mono font-medium text-gray-900">
+                                <span className="text-ink-muted uppercase tracking-wider text-[10px]">Cost</span>
+                                <span className="font-mono font-medium text-ink">
                                     ₹{task.estimated_cost_inr.toLocaleString('en-IN')}
                                 </span>
                             </div>
                             {task.spare_parts_needed.length > 0 && (
-                                <div className="pt-2 border-t border-gray-100">
-                                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Parts Needed</p>
+                                <div className="pt-2 border-t border-hairline">
+                                    <p className="text-[10px] text-ink-muted uppercase tracking-wider mb-1">Parts Needed</p>
                                     <div className="flex flex-wrap gap-1.5">
                                         {task.spare_parts_needed.map((part, i) => (
-                                            <span key={i} className="text-[11px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
+                                            <span key={i} className="text-[11px] bg-canvas-sunken text-ink px-2 py-0.5 rounded">
                                                 {part}
                                             </span>
                                         ))}
@@ -180,7 +180,7 @@ export default function MaintenanceMobileView({ selectedDepotId }: Props) {
                         </div>
 
                         {/* Action buttons */}
-                        <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-2">
+                        <div className="px-4 py-3 bg-canvas border-t border-hairline flex items-center justify-between gap-2">
                             <label className="flex items-center gap-2 cursor-pointer select-none">
                                 <input
                                     type="checkbox"
@@ -188,7 +188,7 @@ export default function MaintenanceMobileView({ selectedDepotId }: Props) {
                                     onChange={() => handleCheck(task.task_id)}
                                     className="w-5 h-5 accent-gray-900 cursor-pointer"
                                 />
-                                <span className="text-xs font-medium text-gray-700">
+                                <span className="text-xs font-medium text-ink">
                                     {isChecked ? 'Done' : 'Mark done'}
                                 </span>
                             </label>
@@ -198,8 +198,8 @@ export default function MaintenanceMobileView({ selectedDepotId }: Props) {
                                     disabled={isSubmitted}
                                     className={`text-[11px] font-mono uppercase tracking-wider px-3 py-1.5 rounded transition-colors ${
                                         isSubmitted
-                                            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                                            : 'bg-gray-900 text-white hover:bg-gray-800 active:bg-gray-700'
+                                            ? 'bg-canvas-sunken text-ink-muted cursor-not-allowed'
+                                            : 'bg-graphite-900 text-white bg-graphite-800 bg-graphite-800'
                                     }`}
                                 >
                                     {isSubmitted ? 'Sent for approval' : 'Send for ₹5L approval'}
@@ -212,9 +212,9 @@ export default function MaintenanceMobileView({ selectedDepotId }: Props) {
 
             {/* Completion summary */}
             {completedCount === totalCount && totalCount > 0 && (
-                <div className="p-6 bg-gray-900 rounded-xl text-center">
+                <div className="p-6 bg-graphite-900 rounded-xl text-center">
                     <p className="text-sm font-semibold text-white tracking-tight">All tasks complete</p>
-                    <p className="text-xs text-gray-400 mt-1">Shift summary auto-saved to audit log.</p>
+                    <p className="text-xs text-ink-faint mt-1">Shift summary auto-saved to audit log.</p>
                 </div>
             )}
         </div>

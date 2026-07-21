@@ -78,8 +78,8 @@ export const CommodityPriceWidget: React.FC = () => {
     fetchData();
   }, []);
 
-  if (loading) return <div className="p-4 bg-white rounded-lg shadow-sm border border-gray-100 animate-pulse h-64"></div>;
-  if (error) return <div className="p-4 bg-red-50 text-red-600 rounded-lg shadow-sm border border-red-100">{error}</div>;
+  if (loading) return <div className="p-4 bg-canvas rounded-lg shadow-sm border border-hairline animate-pulse h-64"></div>;
+  if (error) return <div className="p-4 bg-status-critical-bg text-status-critical-fg rounded-lg shadow-sm border border-status-critical-border">{error}</div>;
 
   const hasHighVolatility = Object.values(prices).some(p => Math.abs(p.change_24h) > 5.0);
   const volatileMaterial = Object.entries(prices).find(([_, p]) => Math.abs(p.change_24h) > 5.0);
@@ -89,15 +89,15 @@ export const CommodityPriceWidget: React.FC = () => {
     const sparklineData = prepareSparklineData(data.history, data.price);
     
     return (
-      <div className="flex flex-col p-3 bg-gray-50 rounded-md border border-gray-100">
+      <div className="flex flex-col p-3 bg-canvas rounded-md border border-hairline">
         <div className="flex justify-between items-center mb-1">
-          <span className="text-sm font-semibold text-gray-600">{name}</span>
+          <span className="text-sm font-semibold text-ink-muted">{name}</span>
           <span className={`text-xs font-bold flex items-center ${isUp ? 'text-green-400' : 'text-red-400'}`}>
             {isUp ? <ArrowUp size={12} className="mr-1" /> : <ArrowDown size={12} className="mr-1" />}
             {Math.abs(data.change_24h)}%
           </span>
         </div>
-        <div className="text-lg font-bold text-gray-900 mb-2">₹{data.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} <span className="text-xs font-normal text-gray-500">/kg</span></div>
+        <div className="text-lg font-bold text-ink mb-2">₹{data.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} <span className="text-xs font-normal text-ink-muted">/kg</span></div>
         <div className="h-10 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={sparklineData}>
@@ -116,19 +116,19 @@ export const CommodityPriceWidget: React.FC = () => {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 w-full flex flex-col space-y-5">
+    <div className="bg-canvas rounded-xl shadow-sm border border-hairline p-5 w-full flex flex-col space-y-5">
       
       {/* Header & Warning */}
       <div className="flex justify-between items-start">
         <div>
-          <h3 className="text-xl font-bold text-gray-800 flex items-center">
+          <h3 className="text-xl font-bold text-ink flex items-center">
             <TrendingUp className="mr-2 text-indigo-500" size={20} />
             Commodity Price Feed
           </h3>
-          <p className="text-sm text-gray-500">Live LME tracking & CapEx sensitivity (7-day trend)</p>
+          <p className="text-sm text-ink-muted">Live LME tracking & CapEx sensitivity (7-day trend)</p>
         </div>
         {hasHighVolatility && volatileMaterial && (
-          <div className="flex items-center bg-yellow-50 text-yellow-700 border border-yellow-200 px-3 py-1.5 rounded-full text-xs font-medium">
+          <div className="flex items-center bg-yellow-50 text-status-warning-fg border border-status-warning-border px-3 py-1.5 rounded-full text-xs font-medium">
             <AlertTriangle size={14} className="mr-1.5" />
             {volatileMaterial[0]} moved {volatileMaterial[1].change_24h > 0 ? 'up' : 'down'} {Math.abs(volatileMaterial[1].change_24h)}% — CapEx sensitivity high
           </div>
@@ -144,14 +144,14 @@ export const CommodityPriceWidget: React.FC = () => {
 
       {/* Stacked Bar for CapEx */}
       {capex && (
-        <div className="pt-2 border-t border-gray-100 mt-2">
+        <div className="pt-2 border-t border-hairline mt-2">
           <div className="flex justify-between items-end mb-2">
             <div>
-              <p className="text-sm text-gray-500 mb-1">Current CapEx per vehicle (5t Truck)</p>
-              <div className="text-2xl font-bold text-gray-900 flex items-baseline">
+              <p className="text-sm text-ink-muted mb-1">Current CapEx per vehicle (5t Truck)</p>
+              <div className="text-2xl font-bold text-ink flex items-baseline">
                 ₹{capex.current_capex.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}
                 {capex.delta !== 0 && (
-                  <span className={`ml-3 text-sm font-medium ${capex.delta > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                  <span className={`ml-3 text-sm font-medium ${capex.delta > 0 ? 'text-status-critical-fg' : 'text-green-500'}`}>
                     {capex.delta > 0 ? '+' : ''}₹{capex.delta.toLocaleString(undefined, {maximumFractionDigits: 0})} ({capex.delta_pct.toFixed(2)}%)
                   </span>
                 )}
@@ -160,20 +160,20 @@ export const CommodityPriceWidget: React.FC = () => {
           </div>
           
           {/* Stacked Bar */}
-          <div className="w-full h-6 rounded-full overflow-hidden flex bg-gray-100 mt-3 shadow-inner">
+          <div className="w-full h-6 rounded-full overflow-hidden flex bg-canvas-sunken mt-3 shadow-inner">
             <div 
               style={{ width: `${(capex.breakdown.lithium_contribution / capex.current_capex) * 100}%` }} 
-              className="bg-emerald-500 h-full tooltip-trigger relative group"
+              className="bg-status-ok-fg h-full tooltip-trigger relative group"
             >
-              <div className="absolute opacity-0 group-hover:opacity-100 -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-xs text-white px-2 py-1 rounded whitespace-nowrap z-10 transition-opacity">
+              <div className="absolute opacity-0 group-hover:opacity-100 -top-8 left-1/2 -translate-x-1/2 bg-graphite-800 text-xs text-white px-2 py-1 rounded whitespace-nowrap z-10 transition-opacity">
                 Li: ₹{Math.round(capex.breakdown.lithium_contribution).toLocaleString()}
               </div>
             </div>
             <div 
               style={{ width: `${(capex.breakdown.cobalt_contribution / capex.current_capex) * 100}%` }} 
-              className="bg-blue-500 h-full tooltip-trigger relative group"
+              className="bg-voltage-400 h-full tooltip-trigger relative group"
             >
-              <div className="absolute opacity-0 group-hover:opacity-100 -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-xs text-white px-2 py-1 rounded whitespace-nowrap z-10 transition-opacity">
+              <div className="absolute opacity-0 group-hover:opacity-100 -top-8 left-1/2 -translate-x-1/2 bg-graphite-800 text-xs text-white px-2 py-1 rounded whitespace-nowrap z-10 transition-opacity">
                 Co: ₹{Math.round(capex.breakdown.cobalt_contribution).toLocaleString()}
               </div>
             </div>
@@ -181,7 +181,7 @@ export const CommodityPriceWidget: React.FC = () => {
               style={{ width: `${(capex.breakdown.nickel_contribution / capex.current_capex) * 100}%` }} 
               className="bg-violet-500 h-full tooltip-trigger relative group"
             >
-              <div className="absolute opacity-0 group-hover:opacity-100 -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-xs text-white px-2 py-1 rounded whitespace-nowrap z-10 transition-opacity">
+              <div className="absolute opacity-0 group-hover:opacity-100 -top-8 left-1/2 -translate-x-1/2 bg-graphite-800 text-xs text-white px-2 py-1 rounded whitespace-nowrap z-10 transition-opacity">
                 Ni: ₹{Math.round(capex.breakdown.nickel_contribution).toLocaleString()}
               </div>
             </div>
@@ -189,16 +189,16 @@ export const CommodityPriceWidget: React.FC = () => {
               style={{ width: `${(capex.breakdown.fixed_costs / capex.current_capex) * 100}%` }} 
               className="bg-gray-300 h-full tooltip-trigger relative group"
             >
-              <div className="absolute opacity-0 group-hover:opacity-100 -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-xs text-white px-2 py-1 rounded whitespace-nowrap z-10 transition-opacity">
+              <div className="absolute opacity-0 group-hover:opacity-100 -top-8 left-1/2 -translate-x-1/2 bg-graphite-800 text-xs text-white px-2 py-1 rounded whitespace-nowrap z-10 transition-opacity">
                 Fixed: ₹{Math.round(capex.breakdown.fixed_costs).toLocaleString()}
               </div>
             </div>
           </div>
           
           {/* Legend */}
-          <div className="flex justify-between mt-3 text-xs text-gray-500 px-1">
-            <div className="flex items-center"><span className="w-3 h-3 rounded-sm bg-emerald-500 mr-2"></span>Lithium</div>
-            <div className="flex items-center"><span className="w-3 h-3 rounded-sm bg-blue-500 mr-2"></span>Cobalt</div>
+          <div className="flex justify-between mt-3 text-xs text-ink-muted px-1">
+            <div className="flex items-center"><span className="w-3 h-3 rounded-sm bg-status-ok-fg mr-2"></span>Lithium</div>
+            <div className="flex items-center"><span className="w-3 h-3 rounded-sm bg-voltage-400 mr-2"></span>Cobalt</div>
             <div className="flex items-center"><span className="w-3 h-3 rounded-sm bg-violet-500 mr-2"></span>Nickel</div>
             <div className="flex items-center"><span className="w-3 h-3 rounded-sm bg-gray-300 mr-2"></span>Fixed Costs</div>
           </div>

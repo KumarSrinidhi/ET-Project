@@ -13,9 +13,9 @@ interface Alert {
 }
 
 const SEVERITY_STYLES: Record<string, { bar: string; dot: string; text: string }> = {
-    critical: { bar: 'border-l-red-600',     dot: 'bg-red-500',    text: 'text-red-700' },
-    warning:  { bar: 'border-l-orange-500',  dot: 'bg-orange-500', text: 'text-orange-700' },
-    info:     { bar: 'border-l-gray-400',    dot: 'bg-gray-400',   text: 'text-gray-600' },
+    critical: { bar: 'border-l-status-critical-fg', dot: 'bg-status-critical-fg', text: 'text-status-critical-fg' },
+    warning:  { bar: 'border-l-status-warning-fg',  dot: 'bg-status-warning-fg',  text: 'text-status-warning-fg' },
+    info:     { bar: 'border-l-hairline-strong',    dot: 'bg-ink-faint',          text: 'text-ink-muted' },
 };
 
 const SEVERITY_LABEL: Record<string, string> = {
@@ -110,23 +110,32 @@ export default function LiveAlerts() {
         setUnreadCount(0);
     };
 
+    useEffect(() => {
+        if (!showHistory) return;
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setShowHistory(false);
+        };
+        document.addEventListener('keydown', handleKey);
+        return () => document.removeEventListener('keydown', handleKey);
+    }, [showHistory]);
+
     const criticalCount = alerts.filter(a => a.severity === 'critical' && !a.acknowledged).length;
     const warningCount = alerts.filter(a => a.severity === 'warning' && !a.acknowledged).length;
 
     return (
         <>
             {/* Floating action button — bottom-right */}
-            <div className="fixed bottom-6 right-6 z-50">
+            <div className="fixed bottom-6 right-6 z-50 pb-[env(safe-area-inset-bottom)] pr-[env(safe-area-inset-right)]">
                 <button
                     onClick={openHistory}
-                    className="relative bg-gray-900 hover:bg-gray-800 text-white rounded-full p-3.5 shadow-lg transition-colors"
-                    aria-label="View alerts"
+                    className="relative bg-graphite-900 hover:bg-graphite-800 text-ink-inverse rounded-full p-3.5 shadow-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-voltage-500"
+                    aria-label={`View alerts${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
                 >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                     </svg>
                     {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                        <span className="absolute -top-1 -right-1 bg-status-critical-fg text-ink-inverse text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
                             {unreadCount > 9 ? '9+' : unreadCount}
                         </span>
                     )}
@@ -175,9 +184,12 @@ export default function LiveAlerts() {
 
             {/* History drawer */}
             {showHistory && (
-                <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setShowHistory(false)}>
+                <div className="fixed inset-0 z-50 bg-graphite-950/40" onClick={() => setShowHistory(false)}>
                     <div
-                        className="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-xl flex flex-col"
+                        className="absolute right-0 top-0 bottom-0 w-full max-w-md bg-canvas shadow-xl flex flex-col animate-in slide-in-from-right"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Alert history"
                         onClick={e => e.stopPropagation()}
                     >
                         <div className="px-5 py-3 border-b border-gray-200 flex items-center justify-between">
@@ -189,8 +201,8 @@ export default function LiveAlerts() {
                             </div>
                             <button
                                 onClick={() => setShowHistory(false)}
-                                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
-                                aria-label="Close"
+                                className="text-ink-faint hover:text-ink text-2xl leading-none w-8 h-8 flex items-center justify-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-voltage-500"
+                                aria-label="Close alert history"
                             >
                                 ×
                             </button>
@@ -205,7 +217,7 @@ export default function LiveAlerts() {
                                 return (
                                     <div
                                         key={alert.alert_id}
-                                        className={`px-5 py-3 hover:bg-gray-50 transition-colors ${alert.acknowledged ? 'opacity-50' : ''}`}
+                                        className={`px-5 py-3 hover:bg-canvas-sunken transition-colors ${alert.acknowledged ? 'opacity-50' : ''}`}
                                     >
                                         <div className="flex items-start gap-3">
                                             <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${styles.dot}`} />
@@ -225,7 +237,7 @@ export default function LiveAlerts() {
                                             {!alert.acknowledged && (
                                                 <button
                                                     onClick={() => handleAcknowledge(alert.alert_id)}
-                                                    className="shrink-0 text-[10px] uppercase tracking-wider font-medium text-gray-500 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-100"
+                                                    className="shrink-0 text-[10px] uppercase tracking-wider font-medium text-ink-muted hover:text-ink px-2 py-1 rounded hover:bg-canvas-sunken"
                                                 >
                                                     Ack
                                                 </button>

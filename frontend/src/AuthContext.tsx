@@ -61,6 +61,7 @@ const ROLE_VIEWS: Record<string, RoleView> = {
     navItems: [
       { label: "Executive Dashboard", path: "/executive", icon: "PieChart" },
       { label: "Fleet Health", path: "/fleet/health", icon: "Activity" },
+      { label: "Battery Passport", path: "/battery-passport", icon: "Shield" },
       { label: "Maintenance Schedule", path: "/maintenance", icon: "Calendar" },
       { label: "Procurement", path: "/procurement", icon: "Briefcase" },
       { label: "Supply Chain", path: "/supply-chain", icon: "Globe" },

@@ -640,13 +640,6 @@ GET /api/scheduler/status                               200, 6 jobs
 
 ---
 
-## Contributors
-
-Built across 27 commits. See `git log --oneline` for history.
-
-- **KumarSrinidhi** — Project owner
-- **CommandCodeBot** — Initial scaffold + companion modules (via Co-authored-by trailer)
-
 ---
 
 *Generated as part of the build sequence. For architecture diagram in Mermaid.js, see `ARCHITECTURE.md`.*

@@ -59,13 +59,13 @@ export default function BusinessAnalyticsView() {
     return (
         <div className="mt-12 space-y-6">
             <div>
-                <h2 className="text-2xl font-bold text-gray-800 tracking-tight">Business Analytics</h2>
-                <p className="text-sm text-gray-500 mt-1">
+                <h2 className="text-2xl font-bold text-ink tracking-tight">Business Analytics</h2>
+                <p className="text-sm text-ink-muted mt-1">
                     Vehicle cohorts, TCO trends, vendor scorecards, and carbon credit market valuation.
                 </p>
             </div>
 
-            <div className="border-b border-gray-200">
+            <div className="border-b border-hairline">
                 <nav className="flex gap-6 overflow-x-auto" role="tablist">
                     {([
                         ['cohort',     'Fleet Cohorts'],
@@ -80,8 +80,8 @@ export default function BusinessAnalyticsView() {
                             onClick={() => setSubTab(key)}
                             className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                                 subTab === key
-                                    ? 'border-blue-600 text-blue-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                                    ? 'border-blue-600 text-voltage-600'
+                                    : 'border-transparent text-ink-muted text-ink'
                             }`}
                         >
                             {label}
@@ -101,15 +101,15 @@ export default function BusinessAnalyticsView() {
 function CohortPanel() {
     const [data, setData] = useState<CohortResponse | null>(null);
     useEffect(() => { fetchCohort().then(setData).catch(() => {}); }, []);
-    if (!data) return <div className="p-5 text-sm text-gray-500">Loading cohort data...</div>;
+    if (!data) return <div className="p-5 text-sm text-ink-muted">Loading cohort data...</div>;
 
     const maxSoH = Math.max(...data.cohorts.map(c => c.avg_soh), 100);
 
     return (
         <div className="space-y-6">
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
-                    <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">
+            <div className="bg-canvas rounded-xl border border-hairline shadow-sm overflow-hidden">
+                <div className="px-5 py-3 border-b border-hairline bg-canvas">
+                    <h3 className="text-[11px] uppercase tracking-wider text-ink-faint font-medium">
                         Battery Health by Vehicle Age Cohort
                     </h3>
                 </div>
@@ -118,17 +118,17 @@ function CohortPanel() {
                         <div key={c.cohort_year}>
                             <div className="flex items-center justify-between mb-1.5">
                                 <div>
-                                    <span className="text-sm font-medium text-gray-900">{c.label}</span>
-                                    <span className="text-[11px] text-gray-400 ml-2">{c.vehicle_count} vehicles</span>
+                                    <span className="text-sm font-medium text-ink">{c.label}</span>
+                                    <span className="text-[11px] text-ink-faint ml-2">{c.vehicle_count} vehicles</span>
                                 </div>
                                 <div className="font-mono text-xs">
-                                    <span className="text-gray-900 font-semibold">{c.avg_soh}%</span>
-                                    <span className="text-gray-400 ml-3">deg {c.avg_degradation_rate.toFixed(4)}/d</span>
+                                    <span className="text-ink font-semibold">{c.avg_soh}%</span>
+                                    <span className="text-ink-faint ml-3">deg {c.avg_degradation_rate.toFixed(4)}/d</span>
                                 </div>
                             </div>
-                            <div className="w-full bg-gray-100 rounded-full h-3">
+                            <div className="w-full bg-canvas-sunken rounded-full h-3">
                                 <div
-                                    className="h-3 rounded-full bg-gray-800 transition-all"
+                                    className="h-3 rounded-full bg-graphite-800 transition-all"
                                     style={{ width: `${(c.avg_soh / maxSoH) * 100}%`, opacity: c.avg_soh < 85 ? 1 : 0.6 }}
                                 />
                             </div>
@@ -137,8 +137,8 @@ function CohortPanel() {
                 </div>
             </div>
 
-            <div className="p-4 bg-gray-50/50 rounded-xl border border-gray-100">
-                <p className="text-sm text-gray-700 leading-relaxed">{data.insight}</p>
+            <div className="p-4 bg-canvas rounded-xl border border-hairline">
+                <p className="text-sm text-ink leading-relaxed">{data.insight}</p>
             </div>
         </div>
     );
@@ -147,7 +147,7 @@ function CohortPanel() {
 function TcoPanel() {
     const [data, setData] = useState<TcoResponse | null>(null);
     useEffect(() => { fetchTcoTrend(12).then(setData).catch(() => {}); }, []);
-    if (!data) return <div className="p-5 text-sm text-gray-500">Loading TCO trend...</div>;
+    if (!data) return <div className="p-5 text-sm text-ink-muted">Loading TCO trend...</div>;
 
     const w = 800;
     const h = 200;
@@ -159,26 +159,26 @@ function TcoPanel() {
 
     return (
         <div className="space-y-6">
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                    <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">
+            <div className="bg-canvas rounded-xl border border-hairline shadow-sm overflow-hidden">
+                <div className="px-5 py-3 border-b border-hairline bg-canvas flex items-center justify-between">
+                    <h3 className="text-[11px] uppercase tracking-wider text-ink-faint font-medium">
                         Total Cost of Ownership per km — 12-month trend
                     </h3>
-                    <span className={`text-[11px] uppercase tracking-wider font-mono font-semibold ${data.trend_pct_12mo < 0 ? 'text-gray-900' : 'text-red-600'}`}>
+                    <span className={`text-[11px] uppercase tracking-wider font-mono font-semibold ${data.trend_pct_12mo < 0 ? 'text-ink' : 'text-status-critical-fg'}`}>
                         {data.trend_pct_12mo > 0 ? '+' : ''}{data.trend_pct_12mo}%
                     </span>
                 </div>
                 <div className="p-5">
                     <div className="grid grid-cols-2 gap-3 mb-4">
-                        <div className="bg-gray-50/80 rounded-xl p-5 text-center">
-                            <p className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Current TCO</p>
-                            <p className="mt-2 font-mono text-xl font-semibold text-gray-900 tracking-tight">
+                        <div className="bg-canvas rounded-xl p-5 text-center">
+                            <p className="text-[11px] uppercase tracking-wider text-ink-faint font-medium">Current TCO</p>
+                            <p className="mt-2 font-mono text-xl font-semibold text-ink tracking-tight">
                                 ₹{data.current_cost_per_km_inr.toFixed(2)}/km
                             </p>
                         </div>
-                        <div className="bg-gray-50/80 rounded-xl p-5 text-center">
-                            <p className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">12-month change</p>
-                            <p className={`mt-2 font-mono text-xl font-semibold tracking-tight ${data.trend_pct_12mo < 0 ? 'text-gray-900' : 'text-red-600'}`}>
+                        <div className="bg-canvas rounded-xl p-5 text-center">
+                            <p className="text-[11px] uppercase tracking-wider text-ink-faint font-medium">12-month change</p>
+                            <p className={`mt-2 font-mono text-xl font-semibold tracking-tight ${data.trend_pct_12mo < 0 ? 'text-ink' : 'text-status-critical-fg'}`}>
                                 {data.trend_pct_12mo > 0 ? '+' : ''}{data.trend_pct_12mo}%
                             </p>
                         </div>
@@ -195,7 +195,7 @@ function TcoPanel() {
                             {data.history[data.history.length - 1]?.month}
                         </text>
                     </svg>
-                    <p className="text-xs text-gray-500 mt-3 leading-relaxed">{data.interpretation}</p>
+                    <p className="text-xs text-ink-muted mt-3 leading-relaxed">{data.interpretation}</p>
                 </div>
             </div>
         </div>
@@ -205,42 +205,42 @@ function TcoPanel() {
 function ScorecardPanel() {
     const [data, setData] = useState<ScorecardResponse | null>(null);
     useEffect(() => { fetchVendorScorecard().then(setData).catch(() => {}); }, []);
-    if (!data) return <div className="p-5 text-sm text-gray-500">Loading vendor scorecard...</div>;
+    if (!data) return <div className="p-5 text-sm text-ink-muted">Loading vendor scorecard...</div>;
 
     const GRADE_COLORS: Record<string, string> = {
-        A: 'bg-gray-900 text-white',
-        B: 'bg-gray-100 text-gray-900',
-        C: 'bg-gray-200 text-gray-700',
-        D: 'bg-red-50 text-red-700 border border-red-200',
+        A: 'bg-graphite-900 text-white',
+        B: 'bg-canvas-sunken text-ink',
+        C: 'bg-canvas-sunken text-ink',
+        D: 'bg-status-critical-bg text-status-critical-fg border border-status-critical-border',
     };
 
     return (
         <div className="space-y-6">
             {/* Summary cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="bg-gray-50/80 rounded-xl p-5 text-center">
-                    <p className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Quarter</p>
-                    <p className="mt-2 font-mono text-lg font-semibold text-gray-900 tracking-tight">{data.quarter}</p>
+                <div className="bg-canvas rounded-xl p-5 text-center">
+                    <p className="text-[11px] uppercase tracking-wider text-ink-faint font-medium">Quarter</p>
+                    <p className="mt-2 font-mono text-lg font-semibold text-ink tracking-tight">{data.quarter}</p>
                 </div>
-                <div className="bg-gray-50/80 rounded-xl p-5 text-center">
-                    <p className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Suppliers</p>
-                    <p className="mt-2 font-mono text-xl font-semibold text-gray-900 tracking-tight">{data.summary.total_suppliers}</p>
+                <div className="bg-canvas rounded-xl p-5 text-center">
+                    <p className="text-[11px] uppercase tracking-wider text-ink-faint font-medium">Suppliers</p>
+                    <p className="mt-2 font-mono text-xl font-semibold text-ink tracking-tight">{data.summary.total_suppliers}</p>
                 </div>
-                <div className="bg-gray-50/80 rounded-xl p-5 text-center">
-                    <p className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">A-Grade</p>
-                    <p className="mt-2 font-mono text-xl font-semibold text-gray-900 tracking-tight">{data.summary.grade_a_count}</p>
+                <div className="bg-canvas rounded-xl p-5 text-center">
+                    <p className="text-[11px] uppercase tracking-wider text-ink-faint font-medium">A-Grade</p>
+                    <p className="mt-2 font-mono text-xl font-semibold text-ink tracking-tight">{data.summary.grade_a_count}</p>
                 </div>
-                <div className="bg-gray-50/80 rounded-xl p-5 text-center">
-                    <p className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">D-Grade (Action)</p>
-                    <p className="mt-2 font-mono text-xl font-semibold text-red-600 tracking-tight">{data.summary.grade_d_count}</p>
+                <div className="bg-canvas rounded-xl p-5 text-center">
+                    <p className="text-[11px] uppercase tracking-wider text-ink-faint font-medium">D-Grade (Action)</p>
+                    <p className="mt-2 font-mono text-xl font-semibold text-status-critical-fg tracking-tight">{data.summary.grade_d_count}</p>
                 </div>
             </div>
 
             {/* Scorecard table */}
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="bg-canvas rounded-xl border border-hairline shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-500">
-                        <thead className="bg-gray-50/30 text-[11px] uppercase tracking-wider text-gray-400 font-medium">
+                    <table className="w-full text-sm text-left text-ink-muted">
+                        <thead className="bg-canvas text-[11px] uppercase tracking-wider text-ink-faint font-medium">
                             <tr>
                                 <th className="px-5 py-2.5">Grade</th>
                                 <th className="px-5 py-2.5">Supplier</th>
@@ -257,22 +257,22 @@ function ScorecardPanel() {
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {data.vendors.map((v, i) => (
-                                <tr key={i} className="hover:bg-gray-50/50 transition-colors">
+                                <tr key={i} className="bg-canvas transition-colors">
                                     <td className="px-5 py-3">
                                         <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-mono font-bold ${GRADE_COLORS[v.grade]}`}>
                                             {v.grade}
                                         </span>
                                     </td>
-                                    <td className="px-5 py-3 font-medium text-gray-900 text-xs">{v.supplier}</td>
-                                    <td className="px-5 py-3 font-mono text-xs text-gray-500">T{v.tier}</td>
-                                    <td className="px-5 py-3 text-xs text-gray-500">{v.material}</td>
-                                    <td className="px-5 py-3 text-xs text-gray-500">{v.country}</td>
-                                    <td className="px-5 py-3 font-mono text-xs text-gray-800">{v.avg_quality_score}</td>
-                                    <td className="px-5 py-3 font-mono text-xs text-gray-800">{v.esg_score}</td>
-                                    <td className="px-5 py-3 font-mono text-xs text-gray-500">{v.lead_time_days}d</td>
-                                    <td className="px-5 py-3 font-mono text-xs text-gray-500">{v.composite_risk}</td>
-                                    <td className="px-5 py-3 font-mono text-xs font-semibold text-gray-900">{v.composite_score}</td>
-                                    <td className="px-5 py-3 text-[11px] text-gray-600 max-w-xs">{v.recommendation}</td>
+                                    <td className="px-5 py-3 font-medium text-ink text-xs">{v.supplier}</td>
+                                    <td className="px-5 py-3 font-mono text-xs text-ink-muted">T{v.tier}</td>
+                                    <td className="px-5 py-3 text-xs text-ink-muted">{v.material}</td>
+                                    <td className="px-5 py-3 text-xs text-ink-muted">{v.country}</td>
+                                    <td className="px-5 py-3 font-mono text-xs text-ink">{v.avg_quality_score}</td>
+                                    <td className="px-5 py-3 font-mono text-xs text-ink">{v.esg_score}</td>
+                                    <td className="px-5 py-3 font-mono text-xs text-ink-muted">{v.lead_time_days}d</td>
+                                    <td className="px-5 py-3 font-mono text-xs text-ink-muted">{v.composite_risk}</td>
+                                    <td className="px-5 py-3 font-mono text-xs font-semibold text-ink">{v.composite_score}</td>
+                                    <td className="px-5 py-3 text-[11px] text-ink-muted max-w-xs">{v.recommendation}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -286,39 +286,39 @@ function ScorecardPanel() {
 function CreditsPanel() {
     const [data, setData] = useState<CreditResponse | null>(null);
     useEffect(() => { fetchCarbonCredits().then(setData).catch(() => {}); }, []);
-    if (!data) return <div className="p-5 text-sm text-gray-500">Loading carbon credit market data...</div>;
+    if (!data) return <div className="p-5 text-sm text-ink-muted">Loading carbon credit market data...</div>;
 
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="bg-gray-50/80 rounded-xl p-5 text-center">
-                    <p className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Avoided Emissions</p>
-                    <p className="mt-2 font-mono text-xl font-semibold text-gray-900 tracking-tight">
+                <div className="bg-canvas rounded-xl p-5 text-center">
+                    <p className="text-[11px] uppercase tracking-wider text-ink-faint font-medium">Avoided Emissions</p>
+                    <p className="mt-2 font-mono text-xl font-semibold text-ink tracking-tight">
                         {data.avoided_emissions_tons} t
                     </p>
                 </div>
-                <div className="bg-gray-50/80 rounded-xl p-5 text-center">
-                    <p className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Already Purchased</p>
-                    <p className="mt-2 font-mono text-xl font-semibold text-gray-900 tracking-tight">
+                <div className="bg-canvas rounded-xl p-5 text-center">
+                    <p className="text-[11px] uppercase tracking-wider text-ink-faint font-medium">Already Purchased</p>
+                    <p className="mt-2 font-mono text-xl font-semibold text-ink tracking-tight">
                         {data.offset_credits_purchased_tons} t
                     </p>
                 </div>
-                <div className="bg-gray-900 rounded-xl p-5 text-center">
-                    <p className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Net Tradable</p>
+                <div className="bg-graphite-900 rounded-xl p-5 text-center">
+                    <p className="text-[11px] uppercase tracking-wider text-ink-faint font-medium">Net Tradable</p>
                     <p className="mt-2 font-mono text-xl font-semibold text-white tracking-tight">
                         {data.net_tradable_credits_tons} t
                     </p>
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
-                    <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">
+            <div className="bg-canvas rounded-xl border border-hairline shadow-sm overflow-hidden">
+                <div className="px-5 py-3 border-b border-hairline bg-canvas">
+                    <h3 className="text-[11px] uppercase tracking-wider text-ink-faint font-medium">
                         Market Valuation (Indian Carbon Market)
                     </h3>
                 </div>
                 <table className="w-full text-sm">
-                    <thead className="bg-gray-50/30 text-[11px] uppercase tracking-wider text-gray-400 font-medium">
+                    <thead className="bg-canvas text-[11px] uppercase tracking-wider text-ink-faint font-medium">
                         <tr>
                             <th className="px-5 py-2.5 text-left">Scenario</th>
                             <th className="px-5 py-2.5 text-right">Price (₹/tCO₂)</th>
@@ -326,51 +326,51 @@ function CreditsPanel() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                        <tr className="hover:bg-gray-50/50 transition-colors">
-                            <td className="px-5 py-3 font-medium text-gray-900">Conservative (compliance floor)</td>
-                            <td className="px-5 py-3 text-right font-mono text-xs text-gray-500">₹{data.market_data.price_low_inr_per_ton}</td>
-                            <td className="px-5 py-3 text-right font-mono text-xs font-semibold text-gray-900">₹{data.valuation.conservative_inr.toLocaleString('en-IN')}</td>
+                        <tr className="bg-canvas transition-colors">
+                            <td className="px-5 py-3 font-medium text-ink">Conservative (compliance floor)</td>
+                            <td className="px-5 py-3 text-right font-mono text-xs text-ink-muted">₹{data.market_data.price_low_inr_per_ton}</td>
+                            <td className="px-5 py-3 text-right font-mono text-xs font-semibold text-ink">₹{data.valuation.conservative_inr.toLocaleString('en-IN')}</td>
                         </tr>
-                        <tr className="hover:bg-gray-50/50 transition-colors bg-gray-50/30">
-                            <td className="px-5 py-3 font-medium text-gray-900">Market (voluntary average)</td>
-                            <td className="px-5 py-3 text-right font-mono text-xs text-gray-500">₹{data.market_data.price_mid_inr_per_ton}</td>
-                            <td className="px-5 py-3 text-right font-mono text-xs font-semibold text-gray-900">₹{data.valuation.market_inr.toLocaleString('en-IN')}</td>
+                        <tr className="bg-canvas transition-colors bg-canvas">
+                            <td className="px-5 py-3 font-medium text-ink">Market (voluntary average)</td>
+                            <td className="px-5 py-3 text-right font-mono text-xs text-ink-muted">₹{data.market_data.price_mid_inr_per_ton}</td>
+                            <td className="px-5 py-3 text-right font-mono text-xs font-semibold text-ink">₹{data.valuation.market_inr.toLocaleString('en-IN')}</td>
                         </tr>
-                        <tr className="hover:bg-gray-50/50 transition-colors">
-                            <td className="px-5 py-3 font-medium text-gray-900">Premium (removal credits)</td>
-                            <td className="px-5 py-3 text-right font-mono text-xs text-gray-500">₹{data.market_data.price_high_inr_per_ton}</td>
-                            <td className="px-5 py-3 text-right font-mono text-xs font-semibold text-gray-900">₹{data.valuation.premium_inr.toLocaleString('en-IN')}</td>
+                        <tr className="bg-canvas transition-colors">
+                            <td className="px-5 py-3 font-medium text-ink">Premium (removal credits)</td>
+                            <td className="px-5 py-3 text-right font-mono text-xs text-ink-muted">₹{data.market_data.price_high_inr_per_ton}</td>
+                            <td className="px-5 py-3 text-right font-mono text-xs font-semibold text-ink">₹{data.valuation.premium_inr.toLocaleString('en-IN')}</td>
                         </tr>
                     </tbody>
                 </table>
-                <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/50">
-                    <p className="text-[11px] text-gray-400 font-mono uppercase tracking-wider">{data.market_data.source}</p>
+                <div className="px-5 py-3 border-t border-hairline bg-canvas">
+                    <p className="text-[11px] text-ink-faint font-mono uppercase tracking-wider">{data.market_data.source}</p>
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
-                    <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">
+            <div className="bg-canvas rounded-xl border border-hairline shadow-sm overflow-hidden">
+                <div className="px-5 py-3 border-b border-hairline bg-canvas">
+                    <h3 className="text-[11px] uppercase tracking-wider text-ink-faint font-medium">
                         Equivalent Environmental Impact
                     </h3>
                 </div>
                 <div className="grid grid-cols-3 divide-x divide-gray-100">
                     <div className="p-5 text-center">
-                        <p className="font-mono text-2xl font-bold text-gray-900">{data.equivalent_impact.passenger_cars_off_road_1yr.toLocaleString('en-IN')}</p>
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-1">Passenger cars off-road for 1 year</p>
+                        <p className="font-mono text-2xl font-bold text-ink">{data.equivalent_impact.passenger_cars_off_road_1yr.toLocaleString('en-IN')}</p>
+                        <p className="text-[10px] text-ink-muted uppercase tracking-wider mt-1">Passenger cars off-road for 1 year</p>
                     </div>
                     <div className="p-5 text-center">
-                        <p className="font-mono text-2xl font-bold text-gray-900">{data.equivalent_impact.homes_electricity_1yr.toLocaleString('en-IN')}</p>
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-1">Homes' annual electricity</p>
+                        <p className="font-mono text-2xl font-bold text-ink">{data.equivalent_impact.homes_electricity_1yr.toLocaleString('en-IN')}</p>
+                        <p className="text-[10px] text-ink-muted uppercase tracking-wider mt-1">Homes' annual electricity</p>
                     </div>
                     <div className="p-5 text-center">
-                        <p className="font-mono text-2xl font-bold text-gray-900">{data.equivalent_impact.flights_delhi_mumbai.toLocaleString('en-IN')}</p>
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-1">Delhi-Mumbai flights</p>
+                        <p className="font-mono text-2xl font-bold text-ink">{data.equivalent_impact.flights_delhi_mumbai.toLocaleString('en-IN')}</p>
+                        <p className="text-[10px] text-ink-muted uppercase tracking-wider mt-1">Delhi-Mumbai flights</p>
                     </div>
                 </div>
             </div>
 
-            <div className="p-4 bg-gray-900 rounded-xl">
+            <div className="p-4 bg-graphite-900 rounded-xl">
                 <p className="text-sm text-white leading-relaxed">{data.recommendation}</p>
             </div>
         </div>

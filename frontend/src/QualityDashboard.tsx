@@ -14,9 +14,9 @@ interface SPCChartPoint {
 }
 
 const SEVERITY_BADGE: Record<string, string> = {
-    normal: 'bg-gray-100 text-gray-600',
-    warning: 'bg-gray-100 text-gray-600',
-    critical: 'bg-red-50 text-red-600',
+    normal: 'bg-canvas-sunken text-ink-muted',
+    warning: 'bg-canvas-sunken text-ink-muted',
+    critical: 'bg-status-critical-bg text-status-critical-fg',
 };
 
 export default function QualityDashboard({ selectedDepotId }: { selectedDepotId: string | null }) {
@@ -54,13 +54,13 @@ function QualityContent({ data, activeTab, setActiveTab }: {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-800 tracking-tight">Manufacturing Quality Intelligence</h2>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <h2 className="text-2xl font-bold text-ink tracking-tight">Manufacturing Quality Intelligence</h2>
+                    <p className="text-sm text-ink-muted mt-1">
                         SPC Drift Detection - Defect Classification - Supplier Quality Correlation
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className={`text-xs font-mono font-medium px-2 py-0.5 rounded-full ${driftingParams.length > 0 ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-600'}`}>
+                    <span className={`text-xs font-mono font-medium px-2 py-0.5 rounded-full ${driftingParams.length > 0 ? 'bg-status-critical-bg text-status-critical-fg' : 'bg-canvas-sunken text-ink-muted'}`}>
                         {driftingParams.length > 0 ? `${driftingParams.length} DRIFT ALERTS` : 'ALL PARAMETERS STABLE'}
                     </span>
                 </div>
@@ -79,7 +79,7 @@ function QualityContent({ data, activeTab, setActiveTab }: {
             </div>
 
             {/* Tab Navigation */}
-            <div className="border-b border-gray-200">
+            <div className="border-b border-hairline">
                 <nav className="flex gap-6" role="tablist" aria-label="Quality Dashboard Sections">
                     {(['overview', 'spc', 'inspections', 'predictions'] as const).map(tab => (
                         <button
@@ -88,8 +88,8 @@ function QualityContent({ data, activeTab, setActiveTab }: {
                             aria-selected={activeTab === tab}
                             onClick={() => setActiveTab(tab)}
                             className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors capitalize ${activeTab === tab
-                                    ? 'border-blue-600 text-blue-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                                    ? 'border-blue-600 text-voltage-600'
+                                    : 'border-transparent text-ink-muted text-ink'
                                 }`}
                         >
                             {tab === 'spc' ? 'SPC Charts' : tab}
@@ -114,15 +114,15 @@ function QualityContent({ data, activeTab, setActiveTab }: {
                     )}
 
                     {/* Process Parameters Table */}
-                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
-                            <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">
+                    <div className="bg-canvas rounded-xl border border-hairline shadow-sm overflow-hidden">
+                        <div className="px-5 py-3 border-b border-hairline bg-canvas">
+                            <h3 className="text-[11px] uppercase tracking-wider text-ink-faint font-medium">
                                 Process Parameters ({process_parameters.length}) — {driftingParams.length} with drift
                             </h3>
                         </div>
                         <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left text-gray-500">
-                                <thead className="bg-gray-50/30 text-[11px] uppercase tracking-wider text-gray-400 font-medium">
+                            <table className="w-full text-sm text-left text-ink-muted">
+                                <thead className="bg-canvas text-[11px] uppercase tracking-wider text-ink-faint font-medium">
                                     <tr>
                                         <th className="px-5 py-2.5">Parameter</th>
                                         <th className="px-5 py-2.5">Stage</th>
@@ -135,15 +135,15 @@ function QualityContent({ data, activeTab, setActiveTab }: {
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
                                     {process_parameters.map((param, idx) => (
-                                        <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
-                                            <td className="px-5 py-3 font-medium text-gray-800">{param.parameter_name}</td>
-                                            <td className="px-5 py-3 text-xs text-gray-500">{param.stage}</td>
-                                            <td className="px-5 py-3 font-mono text-xs text-gray-800">
+                                        <tr key={idx} className="bg-canvas transition-colors">
+                                            <td className="px-5 py-3 font-medium text-ink">{param.parameter_name}</td>
+                                            <td className="px-5 py-3 text-xs text-ink-muted">{param.stage}</td>
+                                            <td className="px-5 py-3 font-mono text-xs text-ink">
                                                 {param.current_value} {param.unit}
                                             </td>
-                                            <td className="px-5 py-3 font-mono text-xs text-gray-500">{param.target_value}</td>
-                                            <td className="px-5 py-3 font-mono text-xs text-gray-500">{param.ucl} / {param.lcl}</td>
-                                            <td className="px-5 py-3 font-mono text-xs text-gray-500">{param.ewma_value}</td>
+                                            <td className="px-5 py-3 font-mono text-xs text-ink-muted">{param.target_value}</td>
+                                            <td className="px-5 py-3 font-mono text-xs text-ink-muted">{param.ucl} / {param.lcl}</td>
+                                            <td className="px-5 py-3 font-mono text-xs text-ink-muted">{param.ewma_value}</td>
                                             <td className="px-5 py-3">
                                                 <span className={`text-xs font-mono font-medium px-2 py-0.5 rounded-full ${SEVERITY_BADGE[param.drift_severity]}`}>
                                                     {param.drift_severity}
@@ -157,13 +157,13 @@ function QualityContent({ data, activeTab, setActiveTab }: {
                     </div>
 
                     {/* Supplier Quality Matrix */}
-                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
-                            <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Supplier Quality Matrix</h3>
+                    <div className="bg-canvas rounded-xl border border-hairline shadow-sm overflow-hidden">
+                        <div className="px-5 py-3 border-b border-hairline bg-canvas">
+                            <h3 className="text-[11px] uppercase tracking-wider text-ink-faint font-medium">Supplier Quality Matrix</h3>
                         </div>
                         <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left text-gray-500">
-                                <thead className="bg-gray-50/30 text-[11px] uppercase tracking-wider text-gray-400 font-medium">
+                            <table className="w-full text-sm text-left text-ink-muted">
+                                <thead className="bg-canvas text-[11px] uppercase tracking-wider text-ink-faint font-medium">
                                     <tr>
                                         <th className="px-5 py-2.5">Supplier</th>
                                         <th className="px-5 py-2.5">Batches</th>
@@ -175,17 +175,17 @@ function QualityContent({ data, activeTab, setActiveTab }: {
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
                                     {supplier_quality_matrix.map((supplier, idx) => (
-                                        <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
-                                            <td className="px-5 py-3 font-medium text-gray-800">{supplier.supplier}</td>
-                                            <td className="px-5 py-3 font-mono text-xs text-gray-800">{supplier.total_batches}</td>
-                                            <td className="px-5 py-3 font-mono text-xs text-gray-500">{supplier.total_defects}</td>
+                                        <tr key={idx} className="bg-canvas transition-colors">
+                                            <td className="px-5 py-3 font-medium text-ink">{supplier.supplier}</td>
+                                            <td className="px-5 py-3 font-mono text-xs text-ink">{supplier.total_batches}</td>
+                                            <td className="px-5 py-3 font-mono text-xs text-ink-muted">{supplier.total_defects}</td>
                                             <td className="px-5 py-3">
-                                                <span className={`text-xs font-mono font-medium px-2 py-0.5 rounded-full ${supplier.defect_rate_ppm > 15000 ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-600'}`}>
+                                                <span className={`text-xs font-mono font-medium px-2 py-0.5 rounded-full ${supplier.defect_rate_ppm > 15000 ? 'bg-status-critical-bg text-status-critical-fg' : 'bg-canvas-sunken text-ink-muted'}`}>
                                                     {supplier.defect_rate_ppm}
                                                 </span>
                                             </td>
-                                            <td className="px-5 py-3 font-mono text-xs text-gray-500">{supplier.pass_rate_pct}%</td>
-                                            <td className="px-5 py-3 font-mono text-xs font-medium text-gray-800">{supplier.avg_quality_score}</td>
+                                            <td className="px-5 py-3 font-mono text-xs text-ink-muted">{supplier.pass_rate_pct}%</td>
+                                            <td className="px-5 py-3 font-mono text-xs font-medium text-ink">{supplier.avg_quality_score}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -200,15 +200,15 @@ function QualityContent({ data, activeTab, setActiveTab }: {
             )}
 
             {activeTab === 'inspections' && (
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
-                        <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">
+                <div className="bg-canvas rounded-xl border border-hairline shadow-sm overflow-hidden">
+                    <div className="px-5 py-3 border-b border-hairline bg-canvas">
+                        <h3 className="text-[11px] uppercase tracking-wider text-ink-faint font-medium">
                             Incoming Inspection Records ({inspection_records.length} batches)
                         </h3>
                     </div>
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left text-gray-500">
-                            <thead className="bg-gray-50/30 text-[11px] uppercase tracking-wider text-gray-400 font-medium">
+                        <table className="w-full text-sm text-left text-ink-muted">
+                            <thead className="bg-canvas text-[11px] uppercase tracking-wider text-ink-faint font-medium">
                                 <tr>
                                     <th className="px-5 py-2.5">Batch</th>
                                     <th className="px-5 py-2.5">Supplier</th>
@@ -223,24 +223,24 @@ function QualityContent({ data, activeTab, setActiveTab }: {
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {inspection_records.map((record) => (
-                                    <tr key={record.batch_id} className="hover:bg-gray-50/50 transition-colors">
-                                        <td className="px-5 py-3 font-mono text-xs text-gray-800">{record.batch_id}</td>
-                                        <td className="px-5 py-3 font-medium text-gray-800 text-xs">{record.supplier}</td>
-                                        <td className="px-5 py-3 text-xs text-gray-500">{record.material}</td>
-                                        <td className="px-5 py-3 text-xs text-gray-500">{record.inspection_date}</td>
-                                        <td className="px-5 py-3 font-mono text-xs text-gray-800">{record.sample_size}</td>
-                                        <td className="px-5 py-3 font-mono text-xs text-gray-800">{record.defects_found}</td>
+                                    <tr key={record.batch_id} className="bg-canvas transition-colors">
+                                        <td className="px-5 py-3 font-mono text-xs text-ink">{record.batch_id}</td>
+                                        <td className="px-5 py-3 font-medium text-ink text-xs">{record.supplier}</td>
+                                        <td className="px-5 py-3 text-xs text-ink-muted">{record.material}</td>
+                                        <td className="px-5 py-3 text-xs text-ink-muted">{record.inspection_date}</td>
+                                        <td className="px-5 py-3 font-mono text-xs text-ink">{record.sample_size}</td>
+                                        <td className="px-5 py-3 font-mono text-xs text-ink">{record.defects_found}</td>
                                         <td className="px-5 py-3">
-                                            <span className={`text-xs font-mono font-medium px-2 py-0.5 rounded-full ${record.defect_rate_ppm > 10000 ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-600'}`}>
+                                            <span className={`text-xs font-mono font-medium px-2 py-0.5 rounded-full ${record.defect_rate_ppm > 10000 ? 'bg-status-critical-bg text-status-critical-fg' : 'bg-canvas-sunken text-ink-muted'}`}>
                                                 {record.defect_rate_ppm.toFixed(0)}
                                             </span>
                                         </td>
                                         <td className="px-5 py-3">
-                                            <span className={`text-xs font-mono font-medium px-2 py-0.5 rounded-full ${record.pass_fail === 'PASS' ? 'bg-gray-100 text-gray-600' : 'bg-red-50 text-red-600'}`}>
+                                            <span className={`text-xs font-mono font-medium px-2 py-0.5 rounded-full ${record.pass_fail === 'PASS' ? 'bg-canvas-sunken text-ink-muted' : 'bg-status-critical-bg text-status-critical-fg'}`}>
                                                 {record.pass_fail}
                                             </span>
                                         </td>
-                                        <td className="px-5 py-3 font-mono text-xs text-gray-800">{record.quality_score}</td>
+                                        <td className="px-5 py-3 font-mono text-xs text-ink">{record.quality_score}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -250,37 +250,37 @@ function QualityContent({ data, activeTab, setActiveTab }: {
             )}
 
             {activeTab === 'predictions' && (
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
-                        <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">
+                <div className="bg-canvas rounded-xl border border-hairline shadow-sm overflow-hidden">
+                    <div className="px-5 py-3 border-b border-hairline bg-canvas">
+                        <h3 className="text-[11px] uppercase tracking-wider text-ink-faint font-medium">
                             Defect Predictions ({defect_predictions.length} active)
                         </h3>
                     </div>
                     <div className="divide-y divide-gray-50">
                         {defect_predictions.map((pred, idx) => (
-                            <div key={idx} className="px-5 py-3.5 hover:bg-gray-50/50 transition-colors">
+                            <div key={idx} className="px-5 py-3.5 bg-canvas transition-colors">
                                 <div className="flex items-start justify-between gap-4">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
-                                            <span className="font-mono text-xs text-gray-500">{pred.batch_id}</span>
-                                            <span className="text-xs text-gray-400">·</span>
-                                            <span className="text-xs text-gray-500">{pred.stage}</span>
+                                            <span className="font-mono text-xs text-ink-muted">{pred.batch_id}</span>
+                                            <span className="text-xs text-ink-faint">·</span>
+                                            <span className="text-xs text-ink-muted">{pred.stage}</span>
                                         </div>
-                                        <p className="text-sm font-semibold text-gray-800">{pred.predicted_defect_type}</p>
+                                        <p className="text-sm font-semibold text-ink">{pred.predicted_defect_type}</p>
                                         <div className="mt-1.5 space-y-0.5">
                                             {pred.risk_factors.map((factor, fIdx) => (
-                                                <p key={fIdx} className="text-[11px] text-gray-500 leading-relaxed">{factor}</p>
+                                                <p key={fIdx} className="text-[11px] text-ink-muted leading-relaxed">{factor}</p>
                                             ))}
                                         </div>
-                                        <p className="mt-1.5 text-[11px] text-gray-500">
-                                            <span className="font-medium text-gray-700">Action:</span> {pred.recommended_action}
+                                        <p className="mt-1.5 text-[11px] text-ink-muted">
+                                            <span className="font-medium text-ink">Action:</span> {pred.recommended_action}
                                         </p>
                                     </div>
                                     <div className="text-right flex-shrink-0">
-                                        <span className={`text-xs font-mono font-medium px-2 py-0.5 rounded-full ${pred.confidence > 0.85 ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-600'}`}>
+                                        <span className={`text-xs font-mono font-medium px-2 py-0.5 rounded-full ${pred.confidence > 0.85 ? 'bg-status-critical-bg text-status-critical-fg' : 'bg-canvas-sunken text-ink-muted'}`}>
                                             {(pred.confidence * 100).toFixed(1)}%
                                         </span>
-                                        <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">confidence</p>
+                                        <p className="text-[10px] text-ink-faint mt-1 uppercase tracking-wider">confidence</p>
                                     </div>
                                 </div>
                             </div>
@@ -300,19 +300,19 @@ function SPCChartsTab({ spc_charts }: { spc_charts: Record<string, SPCChartPoint
         const first = points[0];
         const violations = points.filter(p => p.out_of_control).length;
         return (
-          <div key={chartName} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
-              <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">{chartName}</h3>
+          <div key={chartName} className="bg-canvas rounded-xl border border-hairline shadow-sm overflow-hidden">
+            <div className="px-5 py-3 border-b border-hairline bg-canvas">
+              <h3 className="text-[11px] uppercase tracking-wider text-ink-faint font-medium">{chartName}</h3>
             </div>
             <div className="p-5">
-              <div className="relative h-48 rounded-lg bg-gray-50/50 border border-gray-100 p-4">
-                <div className="absolute inset-x-4 top-4 flex justify-between text-[10px] text-gray-400 font-mono">
+              <div className="relative h-48 rounded-lg bg-canvas border border-hairline p-4">
+                <div className="absolute inset-x-4 top-4 flex justify-between text-[10px] text-ink-faint font-mono">
                   <span>UCL: {first.ucl}</span>
                 </div>
-                <div className="absolute inset-x-4 bottom-4 flex justify-between text-[10px] text-gray-400 font-mono">
+                <div className="absolute inset-x-4 bottom-4 flex justify-between text-[10px] text-ink-faint font-mono">
                   <span>LCL: {first.lcl}</span>
                 </div>
-                <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 flex justify-between text-[10px] text-gray-400 font-mono">
+                <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 flex justify-between text-[10px] text-ink-faint font-mono">
                   <span>CL: {first.center_line}</span>
                 </div>
                 <div className="flex items-end h-full gap-[2px] pt-6 pb-6">
@@ -322,7 +322,7 @@ function SPCChartsTab({ spc_charts }: { spc_charts: Record<string, SPCChartPoint
                     return (
                       <div
                         key={idx}
-                        className={`flex-1 rounded-t ${point.out_of_control ? 'bg-red-500' : 'bg-gray-800'}`}
+                        className={`flex-1 rounded-t ${point.out_of_control ? 'bg-status-critical-fg' : 'bg-graphite-800'}`}
                         style={{ height: `${normalized * 100}%`, opacity: point.out_of_control ? 1 : 0.6 }}
                         title={`${point.timestamp}: ${point.value} ${point.out_of_control ? '(OUT OF CONTROL)' : ''}`}
                       />
@@ -330,9 +330,9 @@ function SPCChartsTab({ spc_charts }: { spc_charts: Record<string, SPCChartPoint
                   })}
                 </div>
               </div>
-              <div className="flex gap-4 mt-3 text-[11px] uppercase tracking-wider text-gray-400 font-medium">
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-gray-800" style={{opacity: 0.6}} /> In Control</span>
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-red-500" /> Out of Control</span>
+              <div className="flex gap-4 mt-3 text-[11px] uppercase tracking-wider text-ink-faint font-medium">
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-graphite-800" style={{opacity: 0.6}} /> In Control</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-status-critical-fg" /> Out of Control</span>
                 <span className="font-mono">{violations} violations</span>
               </div>
             </div>
@@ -345,12 +345,12 @@ function SPCChartsTab({ spc_charts }: { spc_charts: Record<string, SPCChartPoint
 
 function KPICard({ label, value, subtitle, critical }: { label: string; value: string | number; subtitle?: string; critical?: boolean }) {
     return (
-        <div className="bg-gray-50/80 rounded-xl p-5 text-center">
-            <p className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">{label}</p>
+        <div className="bg-canvas rounded-xl p-5 text-center">
+            <p className="text-[11px] uppercase tracking-wider text-ink-faint font-medium">{label}</p>
             <p className="mt-2">
-                <span className={`font-mono text-xl font-semibold tracking-tight ${critical ? 'text-red-600' : 'text-gray-900'}`}>{value}</span>
+                <span className={`font-mono text-xl font-semibold tracking-tight ${critical ? 'text-status-critical-fg' : 'text-ink'}`}>{value}</span>
             </p>
-            {subtitle && <p className="text-[10px] text-gray-500 mt-1.5 leading-tight">{subtitle}</p>}
+            {subtitle && <p className="text-[10px] text-ink-muted mt-1.5 leading-tight">{subtitle}</p>}
         </div>
     );
 }

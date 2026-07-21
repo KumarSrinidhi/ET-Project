@@ -674,6 +674,68 @@ export const updatePartQuantity = async (partName: string, quantity: number): Pr
   return r.data;
 };
 
+// ─── Battery Material Passport ───────────────────────────────────────────
+
+export interface PassportSupplyNode {
+  entity_name: string;
+  role: string;
+  data: SupplyChainNode | null;
+}
+
+export interface BatteryPassport {
+  passport_id: string;
+  generated_at: string;
+  vehicle: {
+    vehicle_id: string;
+    chemistry: string;
+    chemistry_label: string;
+    chemistry_description: string;
+    current_soh: number;
+    predicted_rul_days: number;
+    degradation_rate_per_day: number;
+    capacity_ah: number;
+    internal_resistance_mohm: number;
+    total_cycles: number;
+    avg_temperature_c: number;
+    is_anomaly: boolean;
+    risk_level: string;
+  };
+  supply_chain: {
+    chemistry: string;
+    trace: PassportSupplyNode[];
+    conflict_minerals_risk: string;
+    carbon_footprint_kg_co2_per_kwh: number;
+  };
+  passport_metadata: {
+    manufacture_date: string;
+    installed_date: string;
+    warranty_years: number;
+    warranty_expiry: string;
+    warranty_remaining_days: number;
+    under_warranty: boolean;
+    regulatory_status: string;
+    recycled_content_pct: number;
+  };
+  recycling: {
+    eligible_for_recycling: boolean;
+    end_of_life_soh_threshold: number;
+    recycling_efficiency_pct: number;
+    recoverable_materials: Record<string, number>;
+    recommended_action: string;
+  };
+  soh_forecast: {
+    forecast: SohForecastPoint[];
+    end_of_life_day: number | null;
+    end_of_life_estimate: string;
+    warning: string;
+  };
+}
+
+export const fetchBatteryPassport = async (vehicleId: string): Promise<BatteryPassport> => {
+  const r = await axios.get(`${BASE}/api/battery-passport/${vehicleId}`);
+  return r.data;
+};
+
 export const fetchPendingApprovals = async (role: string = "maintenance"): Promise<{ pending: ApprovalRequest[]; threshold_inr: number }> => {
   const r = await axios.get(`${BASE}/api/maintenance/pending-approvals`, { params: { role } });
   return r.data;
