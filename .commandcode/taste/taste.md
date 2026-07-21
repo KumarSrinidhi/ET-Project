@@ -29,3 +29,6 @@
 
 # workflow
 - After applying fixes, run `npm run build` to verify zero TypeScript errors before pushing. Confidence: 0.80
+
+# backend
+- When adding new SQLite tables via `CREATE TABLE IF NOT EXISTS` to an existing project, also delete the old `.db` file (or add a migration step) so `init_db()` re-runs — otherwise the old database on disk won't have the new tables. Confidence: 0.75
