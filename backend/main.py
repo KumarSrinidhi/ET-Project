@@ -907,7 +907,122 @@ def get_battery_cost_endpoint(kwh: float = 100, chemistry: str = "NMC 811"):
     return estimate_battery_cost_inr(kwh, chemistry)
 
 
-# ─── Operations Endpoints ───────────────────────────────────────────────────
+# ─── Work Orders & Parts Inventory ─────────────────────────────────────────
+
+class WorkOrderCreate(BaseModel):
+    vehicle_id: str
+    task_type: str
+    priority: str = "medium"
+    technician: str = ""
+    bay: str = ""
+    start_time: str = ""
+    end_time: str = ""
+    estimated_cost_inr: float = 0
+    notes: str = ""
+    depot_id: str = ""
+
+class WorkOrderUpdate(BaseModel):
+    status: str = ""
+    technician: str = ""
+    actual_cost_inr: float = 0
+    notes: str = ""
+    parts_consumed: str = "[]"
+
+class PartUpdate(BaseModel):
+    quantity: int
+
+
+@app.get("/api/work-orders")
+def get_work_orders(depot_id: str = None, status: str = None, user: dict = Depends(require_permission("fleet.maintenance.view"))):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    query = "SELECT * FROM work_orders WHERE 1=1"
+    params = []
+    if depot_id:
+        query += " AND depot_id = ?"
+        params.append(depot_id)
+    if status:
+        query += " AND status = ?"
+        params.append(status)
+    query += " ORDER BY updated_at DESC"
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    return {"work_orders": [dict(r) for r in rows]}
+
+
+@app.post("/api/work-orders")
+def create_work_order(req: WorkOrderCreate, user: dict = Depends(require_permission("fleet.maintenance.create"))):
+    import uuid
+    from datetime import datetime as dt
+    order_id = str(uuid.uuid4())[:8]
+    now = dt.utcnow().isoformat() + "Z"
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO work_orders (id, vehicle_id, task_type, priority, status, technician, bay, start_time, end_time, estimated_cost_inr, actual_cost_inr, parts_consumed, notes, created_at, updated_at, depot_id)
+        VALUES (?, ?, ?, ?, 'scheduled', ?, ?, ?, ?, ?, 0, '[]', ?, ?, ?, ?)
+    ''', (order_id, req.vehicle_id, req.task_type, req.priority, req.technician, req.bay, req.start_time, req.end_time, req.estimated_cost_inr, req.notes, now, now, req.depot_id))
+    conn.commit()
+    conn.close()
+    return {"work_order_id": order_id, "status": "created"}
+
+
+@app.patch("/api/work-orders/{order_id}")
+def update_work_order(order_id: str, req: WorkOrderUpdate, user: dict = Depends(require_permission("fleet.maintenance.edit"))):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    updates = []
+    params = []
+    if req.status:
+        updates.append("status = ?")
+        params.append(req.status)
+    if req.technician:
+        updates.append("technician = ?")
+        params.append(req.technician)
+    if req.actual_cost_inr > 0:
+        updates.append("actual_cost_inr = ?")
+        params.append(req.actual_cost_inr)
+    if req.notes:
+        updates.append("notes = ?")
+        params.append(req.notes)
+    if req.parts_consumed:
+        updates.append("parts_consumed = ?")
+        params.append(req.parts_consumed)
+    from datetime import datetime as dt
+    updates.append("updated_at = ?")
+    params.append(dt.utcnow().isoformat() + "Z")
+    params.append(order_id)
+    cursor.execute(f"UPDATE work_orders SET {', '.join(updates)} WHERE id = ?", params)
+    conn.commit()
+    conn.close()
+    return {"status": "updated", "work_order_id": order_id}
+
+
+@app.get("/api/parts")
+def get_parts_inventory(user: dict = Depends(require_permission("fleet.maintenance.view"))):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM parts_inventory ORDER BY quantity ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    parts = [dict(r) for r in rows]
+    low_stock = [p for p in parts if p["quantity"] <= p["reorder_threshold"]]
+    return {"parts": parts, "low_stock": low_stock, "total_parts": len(parts), "total_value_inr": sum(p["quantity"] * p["unit_cost_inr"] for p in parts)}
+
+
+@app.patch("/api/parts/{part_name}/quantity")
+def update_part_quantity(part_name: str, req: PartUpdate, user: dict = Depends(require_permission("fleet.maintenance.edit"))):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE parts_inventory SET quantity = ?, last_restocked = ? WHERE part_name = ?",
+                   (req.quantity, __import__("datetime").datetime.utcnow().isoformat() + "Z", part_name))
+    conn.commit()
+    conn.close()
+    return {"part_name": part_name, "new_quantity": req.quantity, "status": "updated"}
+
+
+# ─── Existing Operations Endpoints ──────────────────────────────────────────
 
 @app.get("/api/depots/compare")
 def api_get_depots_compare(region: str = None):
@@ -985,8 +1100,9 @@ def check_permission(req: RoleCheckRequest):
 
 
 @app.get("/api/audit-log")
-def get_audit_log_endpoint(role: str = "admin", limit: int = 50):
-    """Recent audit log entries. Role-gated."""
+def get_audit_log_endpoint(limit: int = 50, user: dict = Depends(require_permission("admin.audit.view"))):
+    """Recent audit log entries. Role-gated via JWT."""
+    role = user.get("role_id", "unknown")
     return {
         "role": role,
         "can_view": can(role, "view_audit_log"),
@@ -995,9 +1111,10 @@ def get_audit_log_endpoint(role: str = "admin", limit: int = 50):
 
 
 @app.get("/api/audit-log/export")
-def export_audit_log_endpoint(role: str = "admin"):
+def export_audit_log_endpoint(user: dict = Depends(require_permission("admin.audit.export"))):
     """Export audit log as a printable HTML page (can be saved as PDF via browser)."""
     from fastapi.responses import HTMLResponse
+    role = user.get("role_id", "unknown")
     return HTMLResponse(content=export_audit_log_html(role))
 
 
@@ -1030,8 +1147,9 @@ def submit_maintenance_approval(req: MaintenanceSubmitRequest):
 
 
 @app.get("/api/maintenance/pending-approvals")
-def get_pending_approvals_endpoint(role: str = "maintenance"):
-    """Pending maintenance approvals. Role-gated."""
+def get_pending_approvals_endpoint(user: dict = Depends(require_permission("fleet.maintenance.view"))):
+    """Pending maintenance approvals. Role-gated via JWT."""
+    role = user.get("role_id", "maintenance")
     if not can(role, "view_maintenance"):
         return {"error": "Access denied"}
     return {

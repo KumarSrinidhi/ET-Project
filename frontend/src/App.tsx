@@ -4,6 +4,8 @@ import type { ReadinessResult } from './api';
 import L from 'leaflet';
 import ErrorBoundary from './components/ErrorBoundary';
 
+import WorkOrdersView from './components/WorkOrdersView';
+import PartsInventoryView from './components/PartsInventoryView';
 import FleetReadinessView from './components/FleetReadinessView';
 import IntelligenceView from './components/IntelligenceView';
 import BusinessAnalyticsView from './components/BusinessAnalyticsView';
@@ -123,7 +125,11 @@ export default function App() {
     if (currentPath === '/supply-chain') return <ErrorBoundary><SupplyChainDashboard selectedDepotId={selectedDepotId} /></ErrorBoundary>;
     if (currentPath === '/quality') return <ErrorBoundary><QualityDashboard selectedDepotId={selectedDepotId} /></ErrorBoundary>;
     if (currentPath === '/carbon') return <ErrorBoundary><NetZeroDashboard selectedDepotId={selectedDepotId} /></ErrorBoundary>;
-    if (currentPath.startsWith('/maintenance')) return <ErrorBoundary><MaintenanceDashboard selectedDepotId={selectedDepotId} /></ErrorBoundary>;
+    if (currentPath.startsWith('/maintenance')) {
+      if (currentPath === '/maintenance/orders') return <ErrorBoundary><WorkOrdersView selectedDepotId={selectedDepotId} /></ErrorBoundary>;
+      if (currentPath === '/maintenance/parts') return <ErrorBoundary><PartsInventoryView /></ErrorBoundary>;
+      return <ErrorBoundary><MaintenanceDashboard selectedDepotId={selectedDepotId} /></ErrorBoundary>;
+    }
     if (currentPath.startsWith('/fleet')) {
       return selectedDepotId === null ? 
         <ErrorBoundary><FleetComparisonDashboard /></ErrorBoundary> :

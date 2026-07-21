@@ -4,6 +4,7 @@ import {
     fetchRulForecast, fetchCostPrediction, simulateCarbon, fetchDepotComparison,
     fetchAuditLog, exportAuditLogUrl, fetchPendingApprovals, submitApproval, decideApproval,
 } from '../api';
+import { useAuth } from '../AuthContext';
 import { TopFactorsCard } from './ShapExplainability';
 import type {
     CommodityPrice, BatteryCostBreakdown, ThermalForecast, RulForecast,
@@ -476,10 +477,12 @@ function ScopeBar({ label, value, baseline, max }: { label: string; value: numbe
 // ─── Operations: Depots, Audit Log, Approvals ──────────────────────────────
 
 function OperationsPanel() {
+    const { user } = useAuth();
     const [depots, setDepots] = useState<DepotComparison | null>(null);
     const [audit, setAudit] = useState<{ can_view: boolean; entries: AuditEntry[] }>({ can_view: true, entries: [] });
     const [pending, setPending] = useState<ApprovalRequest[]>([]);
     const decision = { decided_by: 'supervisor@evplatform.io', role: 'maintenance', reason: '' };
+    const currentRole = user?.role || 'admin';
 
     const reload = () => {
         fetchDepotComparison().then(data => {
@@ -492,8 +495,8 @@ function OperationsPanel() {
                 }
             });
         });
-        fetchAuditLog('admin').then(setAudit);
-        fetchPendingApprovals('maintenance').then(d => setPending(d.pending));
+        fetchAuditLog(currentRole).then(setAudit);
+        fetchPendingApprovals(currentRole).then(d => setPending(d.pending));
     };
 
     useEffect(reload, []);
@@ -603,7 +606,7 @@ function OperationsPanel() {
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                     <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
                         <h3 className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Audit Log (Role-Gated)</h3>
-                        <a href={exportAuditLogUrl('admin')} target="_blank" rel="noreferrer"
+                        <a href={exportAuditLogUrl(currentRole)} target="_blank" rel="noreferrer"
                             className="text-[11px] uppercase tracking-wider text-gray-700 font-medium hover:text-gray-900 underline">
                             Open Print Report
                         </a>

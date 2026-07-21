@@ -163,6 +163,29 @@ def seed_rbac(cursor):
     ]
     cursor.executemany('INSERT INTO users (id, name, email, role_id, assigned_depots, active) VALUES (?, ?, ?, ?, ?, ?)', users)
 
+def seed_parts_inventory(cursor):
+    cursor.execute("SELECT COUNT(*) FROM parts_inventory")
+    if cursor.fetchone()[0] > 0:
+        return
+    
+    parts = [
+        ("battery_pack_nmc", "BAT-NMC-001", "Battery", 2, 2, 450000, "Samsung SDI", datetime.utcnow().isoformat(), datetime.utcnow().isoformat()),
+        ("battery_pack_lfp", "BAT-LFP-001", "Battery", 3, 2, 380000, "CATL", datetime.utcnow().isoformat(), datetime.utcnow().isoformat()),
+        ("thermal_paste", "THP-001", "Thermal", 15, 5, 1200, "Dow Corning", datetime.utcnow().isoformat(), datetime.utcnow().isoformat()),
+        ("coolant_fluid_l", "CLT-001", "Fluids", 50, 10, 450, "BASF", datetime.utcnow().isoformat(), datetime.utcnow().isoformat()),
+        ("brake_pads_set", "BRK-001", "Brakes", 20, 8, 8500, "Bosch", datetime.utcnow().isoformat(), datetime.utcnow().isoformat()),
+        ("charging_module", "CHG-001", "Electrical", 4, 2, 125000, "Delta Electronics", datetime.utcnow().isoformat(), datetime.utcnow().isoformat()),
+        ("bms_module", "BMS-001", "Electrical", 6, 3, 95000, "Texas Instruments", datetime.utcnow().isoformat(), datetime.utcnow().isoformat()),
+        ("tire_set", "TYR-001", "Consumables", 30, 10, 25000, "Michelin", datetime.utcnow().isoformat(), datetime.utcnow().isoformat()),
+        ("air_filter", "FLT-001", "Filters", 40, 15, 3200, "Mann+Hummel", datetime.utcnow().isoformat(), datetime.utcnow().isoformat()),
+        ("motor_bearing", "BRG-001", "Motor", 8, 3, 18000, "SKF", datetime.utcnow().isoformat(), datetime.utcnow().isoformat()),
+    ]
+    cursor.executemany(
+        'INSERT INTO parts_inventory (part_name, part_number, category, quantity, reorder_threshold, unit_cost_inr, supplier, last_restocked, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        parts
+    )
+
+
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -307,6 +330,45 @@ def init_db():
         )
     ''')
     
+    # Create work_orders table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS work_orders (
+            id TEXT PRIMARY KEY,
+            vehicle_id TEXT NOT NULL,
+            task_type TEXT NOT NULL,
+            priority TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'scheduled',
+            technician TEXT,
+            bay TEXT,
+            start_time TEXT,
+            end_time TEXT,
+            estimated_cost_inr REAL,
+            actual_cost_inr REAL,
+            parts_consumed TEXT,
+            notes TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            depot_id TEXT,
+            FOREIGN KEY(depot_id) REFERENCES depots(id)
+        )
+    ''')
+    
+    # Create parts_inventory table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS parts_inventory (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            part_name TEXT NOT NULL UNIQUE,
+            part_number TEXT,
+            category TEXT,
+            quantity INTEGER NOT NULL DEFAULT 0,
+            reorder_threshold INTEGER NOT NULL DEFAULT 5,
+            unit_cost_inr REAL NOT NULL DEFAULT 0,
+            supplier TEXT,
+            last_restocked TEXT,
+            created_at TEXT NOT NULL
+        )
+    ''')
+    
     # Create RBAC tables
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS roles (
@@ -360,6 +422,7 @@ def init_db():
         
     seed_depots_and_vehicles(cursor)
     seed_rbac(cursor)
+    seed_parts_inventory(cursor)
     
     conn.commit()
     conn.close()

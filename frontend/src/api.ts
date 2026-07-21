@@ -609,6 +609,71 @@ export const submitApproval = async (req: { task_id: string; vehicle_id: string;
   return r.data;
 };
 
+// ─── Work Orders & Parts Inventory ───────────────────────────────────────
+
+export interface WorkOrder {
+  id: string;
+  vehicle_id: string;
+  task_type: string;
+  priority: string;
+  status: string;
+  technician: string;
+  bay: string;
+  start_time: string;
+  end_time: string;
+  estimated_cost_inr: number;
+  actual_cost_inr: number;
+  parts_consumed: string;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+  depot_id: string;
+}
+
+export interface PartItem {
+  id: number;
+  part_name: string;
+  part_number: string;
+  category: string;
+  quantity: number;
+  reorder_threshold: number;
+  unit_cost_inr: number;
+  supplier: string;
+  last_restocked: string;
+  created_at: string;
+}
+
+export const fetchWorkOrders = async (depotId?: string | null, status?: string): Promise<WorkOrder[]> => {
+  const r = await axios.get(`${BASE}/api/work-orders`, { params: { depot_id: depotId, status } });
+  return r.data.work_orders;
+};
+
+export const createWorkOrder = async (req: {
+  vehicle_id: string; task_type: string; priority?: string; technician?: string;
+  bay?: string; start_time?: string; end_time?: string; estimated_cost_inr?: number;
+  notes?: string; depot_id?: string;
+}): Promise<{ work_order_id: string; status: string }> => {
+  const r = await axios.post(`${BASE}/api/work-orders`, req);
+  return r.data;
+};
+
+export const updateWorkOrder = async (orderId: string, req: {
+  status?: string; technician?: string; actual_cost_inr?: number; notes?: string; parts_consumed?: string;
+}): Promise<{ status: string; work_order_id: string }> => {
+  const r = await axios.patch(`${BASE}/api/work-orders/${orderId}`, req);
+  return r.data;
+};
+
+export const fetchPartsInventory = async (): Promise<{ parts: PartItem[]; low_stock: PartItem[]; total_parts: number; total_value_inr: number }> => {
+  const r = await axios.get(`${BASE}/api/parts`);
+  return r.data;
+};
+
+export const updatePartQuantity = async (partName: string, quantity: number): Promise<{ part_name: string; new_quantity: number; status: string }> => {
+  const r = await axios.patch(`${BASE}/api/parts/${encodeURIComponent(partName)}/quantity`, { quantity });
+  return r.data;
+};
+
 export const fetchPendingApprovals = async (role: string = "maintenance"): Promise<{ pending: ApprovalRequest[]; threshold_inr: number }> => {
   const r = await axios.get(`${BASE}/api/maintenance/pending-approvals`, { params: { role } });
   return r.data;
