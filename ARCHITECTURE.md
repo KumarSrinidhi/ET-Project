@@ -135,7 +135,7 @@ flowchart LR
     QMS --> F5
     CARBON --> F5
 
-    F2 -. .uses all engines. .-> COMPUTE
+    F2 -.->|uses all engines| COMPUTE
 
     classDef source fill:#fef3c7,stroke:#d97706
     classDef engine fill:#f5f5f4,stroke:#a8a29e
