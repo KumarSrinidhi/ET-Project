@@ -113,8 +113,12 @@ Copy `.env.example` to `.env` and fill in:
 |----------|----------|---------|
 | `OPENAI_API_KEY` | yes (for AI agent) | Groq API key — free at [console.groq.com](https://console.groq.com/keys) |
 | `OPENAI_BASE_URL` | no | Defaults to Groq. Set for custom OpenAI-compatible endpoints |
+| `GROQ_MODEL` | no | LLM model name (default `llama-3.3-70b-versatile`) |
 | `PORT` | no | Backend port (default 8000) |
+| `FRONTEND_URL` | no | CORS origin for the frontend (default `http://localhost:5173`) |
 | `VITE_API_URL` | no | Frontend-to-backend URL (default `http://localhost:8000`) |
+| `METALS_DEV_API_KEY` | no | Live commodity prices from metals.dev (falls back to cached data) |
+| `OPENAI_ADMIN_KEY` | no | Fallback LLM key if `OPENAI_API_KEY` is not set |
 
 ---
 

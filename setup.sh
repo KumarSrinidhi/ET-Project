@@ -36,14 +36,14 @@ fi
 # ─── .env bootstrap ─────────────────────────────────────────────
 if [ ! -f .env ]; then
     cp .env.example .env
-    echo "→ Created .env from .env.example. Fill in OPENAI_API_KEY before starting the backend."
+    echo "→ Created .env from .env.example. Fill in the required keys before starting the backend."
 else
     echo "→ .env already exists (left untouched)."
 fi
 
 echo
 echo "✓ Setup complete. Next steps:"
-echo "   1. Edit .env and add your OPENAI_API_KEY (or GROQ_API_KEY)"
+echo "   1. Edit .env and fill in the required API keys (see .env.example for all options)"
 echo "   2. Terminal A: cd backend && ../$VENV_BIN/uvicorn main:app --reload --port 8000"
 echo "   3. Terminal B: cd frontend && npm run dev"
 echo "   4. Open http://localhost:5173 and log in with procurement@demo.com"

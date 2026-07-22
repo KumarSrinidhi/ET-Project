@@ -171,7 +171,7 @@ c = TestClient(main.app)
 - The backend hasn't loaded an environment variable or the LLM key isn't set. The agent falls back to keyword matching. Check the server logs.
 
 ### WebSocket disconnects immediately
-- The browser is connecting to `ws://localhost:8000` but the backend is on a different port. Check `VITE_API_PORT` env var.
+- The browser is connecting to `ws://localhost:8000` but the backend is on a different port. Check the `PORT` and `VITE_API_URL` env vars match.
 
 ### Map shows "Awaiting live news analysis..."
 - This was a bug in an earlier version. Now fixed: the SupplyChain self-populates with live data on mount, or shows a clear baseline message if the LLM is unavailable.

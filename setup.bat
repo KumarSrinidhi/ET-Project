@@ -46,14 +46,14 @@ if not exist frontend\node_modules\.package-lock.json (
 REM ─── .env bootstrap ─────────────────────────────────────────────
 if not exist .env (
     copy .env.example .env >nul
-    echo ──^> Created .env from .env.example. Fill in OPENAI_API_KEY before starting the backend.
+    echo ──^> Created .env from .env.example. Fill in the required keys before starting the backend.
 ) else (
     echo ──^> .env already exists ^(left untouched^).
 )
 
 echo.
 echo ✓ Setup complete. Next steps:
-echo    1. Edit .env and add your OPENAI_API_KEY (or GROQ_API_KEY)
+echo    1. Edit .env and fill in the required API keys (see .env.example for all options)
 echo    2. Terminal A: cd backend ^&^& ..\%VENV_DIR%\Scripts\uvicorn.exe main:app --reload --port 8000
 echo    3. Terminal B: cd frontend ^&^& npm run dev
 echo    4. Open http://localhost:5173 and log in with procurement@demo.com
