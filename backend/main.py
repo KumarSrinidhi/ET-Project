@@ -661,7 +661,7 @@ def get_supply_chain_risk(material: str):
             if row["extracted_claims"]:
                 try:
                     claims = json.loads(row["extracted_claims"])
-                except:
+                except json.JSONDecodeError:
                     pass
             
             grouped_citations[rt].append({

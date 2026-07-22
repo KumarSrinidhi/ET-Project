@@ -80,9 +80,9 @@ For demo / judging: open the URL 30 s ahead of time so the server is warm.
 Any Debian / Ubuntu 22.04 VPS with ≥ 1 GB RAM.
 
 ```bash
-# Install Node 20 + Python 3.10
+# Install Node 20 + Python 3
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-apt-get install -y python3.10 python3.10-venv nginx certbot python3-certbot-nginx
+apt-get install -y python3 python3-venv nginx certbot python3-certbot-nginx
 
 # Clone the repo
 git clone https://github.com/KumarSrinidhi/ET-Project
@@ -93,8 +93,8 @@ cd ET-Project
 
 ```bash
 cd backend
-python3.10 -m venv .venv310
-.venv310/bin/pip install -r requirements.txt
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
 
 # Systemd unit
 cat > /etc/systemd/system/ev-backend.service <<'EOF'
@@ -105,7 +105,7 @@ After=network.target
 [Service]
 User=www-data
 WorkingDirectory=/opt/ET-Project/backend
-ExecStart=/opt/ET-Project/backend/.venv310/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --workers 1
+ExecStart=/opt/ET-Project/backend/.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --workers 1
 Restart=always
 Environment=OPENAI_API_KEY=sk-...
 

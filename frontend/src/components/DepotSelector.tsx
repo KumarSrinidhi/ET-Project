@@ -17,7 +17,7 @@ export default function DepotSelector({ selectedDepotId, onSelectDepot }: DepotS
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetchAllDepots().then(data => setDepots(data.depots)).catch(console.error);
+    fetchAllDepots().then(data => setDepots(data.depots)).catch(() => {});
     
     // Load recents from localStorage
     try {

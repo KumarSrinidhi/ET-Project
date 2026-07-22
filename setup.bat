@@ -8,8 +8,8 @@ setlocal enabledelayedexpansion
 set ROOT=%~dp0
 cd /d "%ROOT%"
 
-if not defined PYTHON_BIN set PYTHON_BIN=py -3.10
-set VENV_DIR=.venv310
+if not defined PYTHON_BIN set PYTHON_BIN=py
+set VENV_DIR=.venv
 set VENV_PY=%VENV_DIR%\Scripts\python.exe
 set VENV_PIP=%VENV_DIR%\Scripts\pip.exe
 

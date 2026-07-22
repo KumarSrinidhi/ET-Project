@@ -80,9 +80,9 @@ A battery in a truck in Pune is traceable to a lithium mine in Chile, with a rea
 ```bash
 # Backend
 cd backend
-py -3.10 -m venv .venv310
-.venv310\Scripts\pip install -r requirements.txt
-.venv310\Scripts\python.exe -m uvicorn main:app --reload --port 8000
+py -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+.venv\Scripts\python.exe -m uvicorn main:app --reload --port 8000
 
 # Frontend
 cd frontend

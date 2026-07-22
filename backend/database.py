@@ -125,8 +125,11 @@ def seed_rbac(cursor):
     
     procurement_perms = [
         "fleet.health.view", "fleet.procurement.view", "fleet.procurement.edit",
+        "fleet.maintenance.view",
         "supply_chain.risk.view", "supply_chain.traceability.view",
-        "quality.qms.view", "carbon.dashboard.view", "depot.assigned"
+        "quality.qms.view", "carbon.dashboard.view",
+        "admin.audit.view",
+        "depot.assigned"
     ]
     role_perms.extend([("procurement", p) for p in procurement_perms])
     

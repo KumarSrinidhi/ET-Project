@@ -56,8 +56,7 @@ export const ShapWaterfallChart = ({ batchId, onClose }: { batchId: string, onCl
 
         setData(chartData);
         setLoading(false);
-      } catch (e) {
-        console.error(e);
+      } catch {
         setLoading(false);
       }
     };
@@ -134,8 +133,7 @@ export const TopFactorsCard = ({ batchId }: { batchId: string }) => {
         const json = await fetchQualityDriftExplanation(batchId);
         setExplanation(json);
         setLoading(false);
-      } catch (e) {
-        console.error(e);
+      } catch {
         setLoading(false);
       }
     };
@@ -245,8 +243,7 @@ export const InlineShapWaterfall = ({ batchId }: { batchId: string }) => {
 
         setData(chartData);
         setLoading(false);
-      } catch (e) {
-        console.error(e);
+      } catch {
         setLoading(false);
       }
     };

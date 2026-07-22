@@ -8,8 +8,8 @@ set -e
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
-PYTHON_BIN="${PYTHON_BIN:-python3.10}"
-VENV_DIR=".venv310"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
+VENV_DIR=".venv"
 VENV_BIN="$VENV_DIR/bin"
 PY="$VENV_BIN/python"
 

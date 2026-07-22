@@ -7,10 +7,10 @@
     "setup": "node scripts/install.js",
     "setup:win": "cmd /c setup.bat",
     "setup:unix": "bash setup.sh",
-    "dev:backend": "cd backend && ..\\.venv310\\Scripts\\python.exe -m uvicorn main:app --reload --port 8000",
+    "dev:backend": "cd backend && ..\\.venv\\Scripts\\python.exe -m uvicorn main:app --reload --port 8000",
     "dev:frontend": "cd frontend && npm run dev",
     "build:frontend": "cd frontend && npm run build",
-    "smoke": ".venv310\\Scripts\\python.exe backend/smoke_test.py",
-    "verify": ".venv310\\Scripts\\python.exe backend/scripts/verify_installation.py"
+    "smoke": ".venv\\Scripts\\python.exe backend/smoke_test.py",
+    "verify": ".venv\\Scripts\\python.exe backend/scripts/verify_installation.py"
   }
 }

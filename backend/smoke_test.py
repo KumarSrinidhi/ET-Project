@@ -4,7 +4,7 @@ Runs after every backend change to verify the platform boots cleanly and all
 28+ endpoints + the WebSocket alert stream return expected data shapes.
 
 Run from the backend directory:
-    .venv310\\Scripts\\python.exe smoke_test.py
+    .venv\\Scripts\\python.exe smoke_test.py
 """
 import sys
 import time

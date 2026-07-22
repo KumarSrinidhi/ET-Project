@@ -18,9 +18,9 @@ Local development setup, file structure tour, and conventions. For architecture,
 ```bash
 # Backend
 cd backend
-py -3.10 -m venv .venv310
-.venv310\Scripts\pip install -r requirements.txt
-.venv310\Scripts\python.exe -m uvicorn main:app --reload --port 8000
+py -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+.venv\Scripts\python.exe -m uvicorn main:app --reload --port 8000
 
 # Frontend (in another terminal)
 cd frontend
@@ -121,7 +121,7 @@ Manual test scripts:
 ```bash
 # Test all endpoints return 200
 cd backend
-.venv310\Scripts\python.exe -c "
+.venv\Scripts\python.exe -c "
 import main
 from fastapi.testclient import TestClient
 c = TestClient(main.app)

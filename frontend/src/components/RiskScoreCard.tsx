@@ -17,7 +17,7 @@ export const RiskScoreCard: React.FC<RiskScoreCardProps> = ({ material }) => {
         setLoading(true);
         fetchRiskScore(material)
             .then(setRiskData)
-            .catch(err => console.error(err))
+            .catch(() => {})
             .finally(() => setLoading(false));
     }, [material]);
 

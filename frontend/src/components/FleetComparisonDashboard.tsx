@@ -21,12 +21,10 @@ export default function FleetComparisonDashboard() {
       fetchDepotComparison(),
       fetchDepotsHeatmap()
     ]).then(([compData, heatData]) => {
-      console.log("compData:", compData);
-      console.log("heatData:", heatData);
       setDepots(compData?.depots || []);
       setHeatmapData(heatData?.matrix || []);
       setLoading(false);
-    }).catch(console.error);
+    }).catch(() => setLoading(false));
   }, []);
 
   const kpis = useMemo(() => {

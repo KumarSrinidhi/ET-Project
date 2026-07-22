@@ -42,8 +42,7 @@ export default function ApmAgentView({ queryApmAgent }: ApmAgentViewProps) {
         setScheduleData(null);
         setMapData(null);
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
     } finally {
       setApmLoading(false);
     }

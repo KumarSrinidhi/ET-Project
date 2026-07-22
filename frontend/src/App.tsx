@@ -116,8 +116,7 @@ export default function App() {
         const results = await fetchFleetReadiness(selectedDepotId);
         setData(results);
         setError(null);
-      } catch (err) {
-        console.error(err);
+      } catch {
         setError("Failed to connect to the backend.");
       }
       setLoadingData(false);

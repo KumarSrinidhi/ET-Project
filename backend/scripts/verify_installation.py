@@ -44,6 +44,7 @@ def check_imports() -> None:
     import numpy
     import pandas
     import sklearn
+    import shap
     import joblib
     import scipy
     print(f"        fastapi {fastapi.__version__}, pydantic {pydantic.__version__}, uvicorn {uvicorn.__version__}, httpx {httpx.__version__}")

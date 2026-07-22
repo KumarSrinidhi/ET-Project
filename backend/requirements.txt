@@ -28,6 +28,7 @@ feedparser==6.0.12
 numpy==2.2.6
 pandas==2.3.3
 scikit-learn==1.7.2
+shap==0.47.1
 joblib==1.5.3
 scipy==1.15.3
 

@@ -75,7 +75,7 @@ We don't have CI yet. Before pushing:
 ```bash
 # Backend smoke test
 cd backend
-.venv310\Scripts\python.exe -c "import main; print('OK')"
+.venv\Scripts\python.exe -c "import main; print('OK')"
 
 # Frontend type check + build
 cd frontend

@@ -89,9 +89,9 @@ setup.bat         # Windows
 
 # Backend
 cd backend
-python3.10 -m venv .venv310
-.venv310/bin/pip install -r requirements.txt    # or .venv310\Scripts\pip on Windows
-.venv310/bin/uvicorn main:app --reload --port 8000
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt    # or .venv\Scripts\pip on Windows
+.venv/bin/uvicorn main:app --reload --port 8000
 
 # Frontend (separate terminal)
 cd frontend

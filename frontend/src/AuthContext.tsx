@@ -131,8 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const res = await axios.post(`${BASE}/api/auth/login`, { email, password: 'password123' });
         login(res.data.access_token, res.data.user);
         window.location.href = ROLE_VIEWS[role].defaultRoute;
-      } catch (e) {
-        console.error("Failed to switch role", e);
+      } catch {
       }
     }
   };

@@ -115,9 +115,9 @@ ROLE_PERMISSIONS = {
         "view_costs": True,
         "view_supply_chain": True,
         "view_carbon": True,
-        "view_maintenance": False,
-        "approve_maintenance": False,
-        "view_audit_log": False,
+        "view_maintenance": True,
+        "approve_maintenance": True,
+        "view_audit_log": True,
         "export_reports": True,
     },
     UserRole.MAINTENANCE: {
