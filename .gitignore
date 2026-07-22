@@ -33,3 +33,11 @@ backend/.env
 .venv310/
 venv/
 .commandcode/taste/taste.md
+
+# Database (generated at runtime)
+backend/et_project.db
+*.db
+
+# Build / migration artifacts
+tracked.txt
+python

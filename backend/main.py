@@ -34,21 +34,21 @@ from operations import (
 
 from contextlib import asynccontextmanager
 from scheduler import start_scheduler, shutdown_scheduler, get_recent_alerts, acknowledge_alert, register_ws, unregister_ws
-from database import get_db_connection
+from database import get_db_connection, init_db
 from business_analytics import cohort_analysis_by_age, tco_trend, vendor_scorecard, carbon_credit_marketplace
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    init_db()
     start_scheduler()
     yield
     shutdown_scheduler()
 
 app = FastAPI(lifespan=lifespan)
 
-from fastapi import FastAPI, Depends, HTTPException, Security
+from fastapi import Depends, HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from auth import create_access_token, verify_token
-from database import get_db_connection
 import json
 
 security = HTTPBearer()
@@ -69,7 +69,7 @@ def require_permission(required_perm: str):
         cursor.execute('''
             SELECT 1 FROM role_permissions rp
             JOIN permissions p ON rp.permission_id = p.id
-            WHERE rp.role_id = ? AND (p.id = ? OR rp.role_id = 'admin')
+            WHERE rp.role_id = ? AND p.id = ?
         ''', (role_id, required_perm))
         
         if not cursor.fetchone() and role_id != 'admin':

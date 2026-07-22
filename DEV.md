@@ -102,8 +102,8 @@ components/
 - **Tailwind utility classes** for styling (no styled-components, no CSS-in-JS)
 - **`text-[11px] uppercase tracking-wider text-gray-400 font-medium`** for table headers / section labels
 - **`font-mono`** for numbers and metrics
-- **`bg-gray-50/80 rounded-xl p-5`** for the standard elevated card
-- **`bg-gray-900 rounded-xl p-5`** with white text for the dark-emphasis card
+- **`bg-canvas rounded-xl border border-hairline shadow-sm`** for the standard elevated card
+- **`bg-graphite-900 rounded-xl p-5`** with `text-ink-inverse` for the dark-emphasis card
 - **No emojis** anywhere in the UI
 
 ### Git
@@ -150,7 +150,7 @@ c = TestClient(main.app)
 2. Add a route in `App.tsx: renderContent()` (wrap in `<ErrorBoundary>`)
 3. Add the route to `AuthContext.tsx: ROLE_VIEWS.{role}.navItems`
 4. Pick an icon from `lucide-react`
-5. Use the standard card pattern: `bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden`
+5. Use the standard card pattern: `bg-canvas rounded-xl border border-hairline shadow-sm`
 
 ### New background job
 

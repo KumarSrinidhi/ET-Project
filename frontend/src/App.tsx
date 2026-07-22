@@ -92,16 +92,19 @@ export default function App() {
 
   // Enforce access control
   useEffect(() => {
-    if (user && roleView) {
+    if (isLoading) return;
+    if (!user) {
+      if (currentPath !== '/login') navigate('/login');
+      return;
+    }
+    if (currentPath === '/login') {
+      navigate(roleView?.defaultRoute || '/executive');
+      return;
+    }
+    if (roleView) {
       const allowedPaths = roleView.navItems.map(item => item.path);
-      // Let it pass if it's an exact match or a sub-path
       const isAllowed = allowedPaths.some(p => currentPath === p || currentPath.startsWith(p + '/'));
-      
-      if (!isAllowed && currentPath !== '/login') {
-        navigate(roleView.defaultRoute);
-      }
-    } else if (!user && !isLoading && currentPath !== '/login') {
-      navigate('/login');
+      if (!isAllowed) navigate(roleView.defaultRoute);
     }
   }, [user, roleView, currentPath, isLoading]);
 
@@ -134,6 +137,10 @@ export default function App() {
   }
 
   const renderContent = () => {
+    if (currentPath === '/login') {
+      // Auth guard above will redirect away, but render nothing during the brief window.
+      return null;
+    }
     if (error) {
       return (
         <div className="flex h-[50vh] items-center justify-center">

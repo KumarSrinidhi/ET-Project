@@ -10,6 +10,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Multi-theme design system with 3 themes (Industrial Net-Zero, Supply Chain Traceability, Dark Mode). ThemeSwitcher in header, persistence via localStorage.
+- Real Recharts visualizations on Executive Dashboard (Fleet SoH trend line chart, Net Zero progress gauge + monthly emissions projection + scope breakdown)
+- Battery Material Passport with supply-chain map
+- Work Orders and Parts Inventory management views
+- Battery cost estimation endpoint (₹15,000/kWh baseline)
+- Inter font via Google Fonts for improved typography
+
+### Fixed
+- Backend auth: `init_db()` now runs at server startup via lifespan handler (was causing 403 on all protected endpoints)
+- SQL `require_permission` query: removed dead `OR rp.role_id = 'admin'` clause
+- Removed duplicate FastAPI imports in `main.py`
+- Login gradient replaced with flat accent line (no-gradients design rule)
+- `text-graphite-950` on accent backgrounds migrated to `text-on-accent` for theme compatibility
+
+### Changed
+- All Tailwind colors migrated from hardcoded oklch to CSS custom properties (`rgb(var(--color-x) / <alpha-value>)`) for theme support
+- README rewritten for public consumption with badges, quick-start, and theme preview
+
+---
+
+## [0.2.0] - Theme System + Auth Fix
+
+### Added
 - Initial release of all 23 features across 9 categories (Fleet Readiness, APM Agent, Maintenance, Supply Chain, QMS, Net Zero, Commodity, Intelligence, Business Analytics, Real-Time, Operations, Mobile)
 - WebSocket live alert stream with 5-second auto-reconnect
 - APScheduler background jobs (news 5m, commodity 15m, anomaly 2m, quality 3m, supply 10m, heartbeat 15m)

@@ -46,7 +46,7 @@ For UI changes, attach screenshots.
 - **No emojis** anywhere — code, comments, UI text.
 - INR (₹), not USD ($), for all monetary values in India-context features.
 - Numbers in `font-mono`, labels in uppercase tracked sans.
-- Cards use the standard elevated pattern: `bg-white rounded-xl border border-gray-100 shadow-sm`.
+- Cards use the standard elevated pattern: `bg-canvas rounded-xl border border-hairline shadow-sm`.
 - Wrap every routed tab in `<ErrorBoundary>`.
 
 ### Commit messages
@@ -55,11 +55,7 @@ For UI changes, attach screenshots.
 feat: short imperative summary (≤ 50 chars)
 
 Optional body explaining why, in 72 cols.
-
-Co-authored-by: Author Name <email@example.com>
 ```
-
-For multi-line commits, write the body as paragraphs. Reference issue numbers with `#123`.
 
 ---
 
