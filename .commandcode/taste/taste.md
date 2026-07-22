@@ -20,6 +20,7 @@
 - Use monochrome premium visual design: `bg-gray-50/80 rounded-xl` cards without borders, `font-mono` for all numeric metrics, `text-[11px] uppercase tracking-wider` for labels, `tracking-tight` for headings. Use blue only for active states. Confidence: 0.75
 - Prefer `divide-y divide-gray-50` list rows (`px-5 py-3.5 hover:bg-gray-50/50 transition-colors`) over spaced card layouts. Numeric risk/status badges with `font-mono px-2 py-0.5 rounded-full` are cleaner than inline progress bars inside list items. Confidence: 0.60
 
+
 # backend
 - Cache external API data (RSS feeds, OSM coordinates) with TTL and populate on server startup via `@app.on_event('startup')` to eliminate cold-start delays for users. Confidence: 0.70
 - Use dedicated module files (e.g., analytics.py, operations.py, scheduler.py) for distinct backend concerns rather than bloating main.py; each module handles its own models, logic, and state with thread-safe locks when needed. Confidence: 0.65
@@ -32,3 +33,6 @@
 
 # backend
 - When adding new SQLite tables via `CREATE TABLE IF NOT EXISTS` to an existing project, also delete the old `.db` file (or add a migration step) so `init_db()` re-runs — otherwise the old database on disk won't have the new tables. Confidence: 0.75
+
+# git
+- Do not add `Co-authored-by: CommandCodeBot <noreply@commandcode.ai>` trailers to git commits. Confidence: 0.80

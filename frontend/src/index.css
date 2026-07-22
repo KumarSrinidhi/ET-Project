@@ -1,3 +1,154 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ======================================================================
+   Theme CSS Custom Properties
+   Three themes managed via [data-theme] attribute on <html>
+   ====================================================================== */
+
+/* ── Theme 1: Industrial Net-Zero ────────────────────────────── */
+[data-theme="net-zero"] {
+  --color-canvas: 244 246 248;
+  --color-canvas-sunken: 232 236 240;
+  --color-ink: 26 32 44;
+  --color-ink-muted: 100 116 139;
+  --color-ink-faint: 148 163 184;
+  --color-ink-inverse: 249 250 251;
+  --color-hairline: 209 213 219;
+  --color-hairline-strong: 156 163 175;
+  --color-on-accent: 255 255 255;
+
+  --color-voltage-50: 230 240 236;
+  --color-voltage-100: 198 223 210;
+  --color-voltage-200: 141 195 166;
+  --color-voltage-400: 45 122 79;
+  --color-voltage-500: 20 83 45;
+  --color-voltage-600: 15 63 34;
+  --color-voltage-700: 10 43 23;
+
+  --color-status-critical-bg: 254 242 242;
+  --color-status-critical-fg: 153 27 27;
+  --color-status-critical-border: 252 165 165;
+  --color-status-warning-bg: 255 247 237;
+  --color-status-warning-fg: 154 52 18;
+  --color-status-warning-border: 253 186 116;
+  --color-status-ok-bg: 236 253 245;
+  --color-status-ok-fg: 6 95 70;
+  --color-status-ok-border: 110 231 183;
+  --color-status-info-bg: 239 246 255;
+  --color-status-info-fg: 30 64 175;
+  --color-status-info-border: 147 197 253;
+
+  --color-graphite-950: 15 23 42;
+  --color-graphite-900: 26 35 48;
+  --color-graphite-800: 40 52 70;
+  --color-graphite-700: 60 74 94;
+
+  --color-chart-1: 20 83 45;    /* Deep Forest */
+  --color-chart-2: 13 148 136;  /* Muted Teal */
+  --color-chart-3: 217 119 6;   /* Industrial Amber */
+  --color-chart-4: 100 116 139; /* Slate Gray */
+}
+
+/* ── Theme 2: Supply Chain Traceability ───────────────────────── */
+[data-theme="supply-chain"] {
+  --color-canvas: 248 250 252;
+  --color-canvas-sunken: 238 242 246;
+  --color-ink: 15 23 42;
+  --color-ink-muted: 71 85 105;
+  --color-ink-faint: 148 163 184;
+  --color-ink-inverse: 248 250 252;
+  --color-hairline: 203 213 225;
+  --color-hairline-strong: 148 163 184;
+  --color-on-accent: 255 255 255;
+
+  --color-voltage-50: 239 246 255;
+  --color-voltage-100: 219 234 254;
+  --color-voltage-200: 147 197 253;
+  --color-voltage-400: 59 130 246;
+  --color-voltage-500: 37 99 235;
+  --color-voltage-600: 29 78 216;
+  --color-voltage-700: 30 58 138;
+
+  --color-status-critical-bg: 254 242 242;
+  --color-status-critical-fg: 153 27 27;
+  --color-status-critical-border: 252 165 165;
+  --color-status-warning-bg: 255 247 237;
+  --color-status-warning-fg: 154 52 18;
+  --color-status-warning-border: 253 186 116;
+  --color-status-ok-bg: 236 253 245;
+  --color-status-ok-fg: 6 95 70;
+  --color-status-ok-border: 110 231 183;
+  --color-status-info-bg: 239 246 255;
+  --color-status-info-fg: 30 64 175;
+  --color-status-info-border: 147 197 253;
+
+  --color-graphite-950: 15 23 42;
+  --color-graphite-900: 30 41 59;
+  --color-graphite-800: 51 65 85;
+  --color-graphite-700: 71 85 105;
+
+  --color-chart-1: 30 41 59;  /* Dark Steel */
+  --color-chart-2: 37 99 235; /* Engineering Blue */
+  --color-chart-3: 5 150 105; /* Emerald */
+  --color-chart-4: 234 88 12; /* Safety Orange */
+}
+
+/* ── Theme 3: Dark Mode Asset Intelligence ───────────────────── */
+[data-theme="dark"] {
+  --color-canvas: 17 24 39;
+  --color-canvas-sunken: 26 35 50;
+  --color-ink: 249 250 251;
+  --color-ink-muted: 156 163 175;
+  --color-ink-faint: 107 114 128;
+  --color-ink-inverse: 17 24 39;
+  --color-hairline: 55 65 81;
+  --color-hairline-strong: 75 85 99;
+  --color-on-accent: 17 24 39;
+
+  --color-voltage-50: 18 48 72;
+  --color-voltage-100: 14 61 92;
+  --color-voltage-200: 14 116 144;
+  --color-voltage-400: 47 168 208;
+  --color-voltage-500: 56 189 248;
+  --color-voltage-600: 14 165 233;
+  --color-voltage-700: 2 132 199;
+
+  --color-status-critical-bg: 45 27 27;
+  --color-status-critical-fg: 252 165 165;
+  --color-status-critical-border: 127 29 29;
+  --color-status-warning-bg: 45 36 20;
+  --color-status-warning-fg: 252 211 77;
+  --color-status-warning-border: 120 53 15;
+  --color-status-ok-bg: 19 36 26;
+  --color-status-ok-fg: 110 231 183;
+  --color-status-ok-border: 6 78 59;
+  --color-status-info-bg: 23 32 51;
+  --color-status-info-fg: 147 197 253;
+  --color-status-info-border: 30 58 95;
+
+  --color-graphite-950: 10 15 26;
+  --color-graphite-900: 17 24 39;
+  --color-graphite-800: 31 41 55;
+  --color-graphite-700: 55 65 81;
+
+  --color-chart-1: 56 189 248;  /* Muted Sky Blue */
+  --color-chart-2: 52 211 153;  /* Muted Mint */
+  --color-chart-3: 251 191 36;  /* Muted Gold */
+  --color-chart-4: 156 163 175; /* Slate */
+}
+
+/* ======================================================================
+   Base Styles
+   ====================================================================== */
+
+@layer base {
+  html {
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    @apply antialiased;
+  }
+}

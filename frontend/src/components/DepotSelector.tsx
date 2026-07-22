@@ -80,7 +80,7 @@ export default function DepotSelector({ selectedDepotId, onSelectDepot }: DepotS
             onClick={() => handleSelect(depot)}
             className={`px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5
               ${selectedDepotId === depot.id 
-                ? 'bg-voltage-700 text-white font-medium' 
+                ? 'bg-voltage-700 text-on-accent font-medium' 
                 : 'bg-canvas text-blue-100 bg-canvas'}`}
           >
             <span className="truncate max-w-[100px]">{depot.code}</span>

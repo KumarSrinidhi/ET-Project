@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { fetchMaintenanceSchedule } from './api';
 import type { OptimizedScheduleResponse, ScheduledTask } from './api';
 import DashboardShell from './components/DashboardShell';
-import MaintenanceMobileView from './components/MaintenanceMobileView';
 
 const PRIORITY_COLORS: Record<string, string> = {
     critical: 'bg-status-critical-fg',
@@ -27,18 +26,6 @@ export default function MaintenanceDashboard({ selectedDepotId }: { selectedDepo
     const [data, setData] = useState<OptimizedScheduleResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>(() => {
-        if (typeof window !== 'undefined') return window.innerWidth < 768 ? 'mobile' : 'desktop';
-        return 'desktop';
-    });
-
-    useEffect(() => {
-        const handleResize = () => {
-            setViewMode(window.innerWidth < 768 ? 'mobile' : 'desktop');
-        };
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
 
     useEffect(() => {
         setLoading(true);
@@ -52,36 +39,11 @@ export default function MaintenanceDashboard({ selectedDepotId }: { selectedDepo
       <DashboardShell loading={loading} error={error} loadingMessage="Optimizing maintenance schedule...">
         {data && (
           <>
-            {/* View toggle */}
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-ink tracking-tight">Maintenance Operations</h2>
-                <p className="text-xs text-ink-muted mt-0.5">Shift {data.shift_date}</p>
-              </div>
-              <div className="flex bg-canvas-sunken rounded-lg p-1">
-                <button
-                  onClick={() => setViewMode('desktop')}
-                  className={`px-3 py-1 text-[11px] font-medium uppercase tracking-wider rounded-md transition-colors ${
-                    viewMode === 'desktop' ? 'bg-canvas text-ink shadow-sm' : 'text-ink-muted'
-                  }`}
-                >
-                  Desktop
-                </button>
-                <button
-                  onClick={() => setViewMode('mobile')}
-                  className={`px-3 py-1 text-[11px] font-medium uppercase tracking-wider rounded-md transition-colors ${
-                    viewMode === 'mobile' ? 'bg-canvas text-ink shadow-sm' : 'text-ink-muted'
-                  }`}
-                >
-                  Mobile
-                </button>
-              </div>
+            <div className="mb-4">
+              <h2 className="text-2xl font-bold text-ink tracking-tight">Maintenance Operations</h2>
+              <p className="text-xs text-ink-muted mt-0.5">Shift {data.shift_date}</p>
             </div>
-            {viewMode === 'mobile' ? (
-              <MaintenanceMobileView selectedDepotId={selectedDepotId} />
-            ) : (
-              <MaintenanceContent data={data} roleView={roleView} />
-            )}
+            <MaintenanceContent data={data} roleView={roleView} />
           </>
         )}
       </DashboardShell>

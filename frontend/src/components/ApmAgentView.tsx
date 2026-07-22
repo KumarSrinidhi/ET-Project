@@ -87,7 +87,7 @@ export default function ApmAgentView({ queryApmAgent }: ApmAgentViewProps) {
           <button
             onClick={handleAgentQuery}
             disabled={apmLoading}
-            className="px-6 py-2 bg-voltage-500 text-white font-medium rounded-md bg-voltage-600 disabled:bg-gray-400"
+            className="px-6 py-2 bg-voltage-500 text-on-accent font-medium rounded-md bg-voltage-600 disabled:bg-gray-400"
           >
             {apmLoading ? "Searching..." : "Search"}
           </button>

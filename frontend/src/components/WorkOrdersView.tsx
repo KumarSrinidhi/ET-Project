@@ -117,7 +117,7 @@ export default function WorkOrdersView({ selectedDepotId }: Props) {
                 <button
                     onClick={() => setShowCreateForm(!showCreateForm)}
                     aria-expanded={showCreateForm}
-                    className="flex items-center gap-2 px-4 py-2 bg-voltage-500 text-graphite-950 rounded-lg hover:bg-voltage-600 active:bg-voltage-700 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-voltage-500 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+                    className="flex items-center gap-2 px-4 py-2 bg-voltage-500 text-on-accent rounded-lg hover:bg-voltage-600 active:bg-voltage-700 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-voltage-500 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                 >
                     <Plus className="w-4 h-4" /> New Work Order
                 </button>
@@ -178,7 +178,7 @@ export default function WorkOrdersView({ selectedDepotId }: Props) {
                             className="w-full md:w-48 border border-hairline rounded-lg px-3 py-2 text-base sm:text-sm font-mono" />
                     </div>
                     <button onClick={handleCreateManual}
-                        className="px-4 py-2 bg-voltage-500 text-graphite-950 rounded-lg hover:bg-voltage-600 text-sm font-medium">
+                        className="px-4 py-2 bg-voltage-500 text-on-accent rounded-lg hover:bg-voltage-600 text-sm font-medium">
                         Create Order
                     </button>
                 </div>
@@ -199,7 +199,7 @@ export default function WorkOrdersView({ selectedDepotId }: Props) {
                                     <p className="text-xs text-ink-muted">{task.task_type} - {task.technician_name}</p>
                                 </div>
                                 <button onClick={() => handleCreateFromSchedule(task)}
-                                    className="px-3 py-1 bg-voltage-500 text-graphite-950 rounded text-xs hover:bg-voltage-600">
+                                    className="px-3 py-1 bg-voltage-500 text-on-accent rounded text-xs hover:bg-voltage-600">
                                     Create WO
                                 </button>
                             </div>

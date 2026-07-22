@@ -237,7 +237,7 @@ export default function FleetComparisonDashboard() {
                   </div>
                   <button 
                     onClick={() => window.location.hash = `#/fleet/${depot.id}`}
-                    className="w-full mt-1 bg-voltage-500 text-white px-2 py-1 rounded text-xs bg-voltage-600"
+                    className="w-full mt-1 bg-voltage-500 text-on-accent px-2 py-1 rounded text-xs bg-voltage-600"
                   >
                     View Details
                   </button>

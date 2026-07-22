@@ -7,58 +7,74 @@ export default {
   theme: {
     extend: {
       colors: {
-        // ─── Canvas (the surface the whole product sits on) ────────────
+        // ─── Canvas (surface backgrounds) ─────────────────────────
         canvas: {
-          DEFAULT: 'oklch(0.985 0.003 75)',     // #FAFAF9 — warm off-white, slight amber tint
-          sunken:  'oklch(0.965 0.005 75)',     // #F5F5F4 — panel sub-surfaces
+          DEFAULT: 'rgb(var(--color-canvas) / <alpha-value>)',
+          sunken:  'rgb(var(--color-canvas-sunken) / <alpha-value>)',
         },
 
-        // ─── Ink (text, icons, hierarchy) ──────────────────────────────
+        // ─── Ink (text, icons, hierarchy) ─────────────────────────
         ink: {
-          DEFAULT: 'oklch(0.22 0.008 75)',      // primary text — graphite, warm-shifted
-          muted:   'oklch(0.48 0.006 75)',      // secondary text
-          faint:   'oklch(0.65 0.005 75)',      // labels, captions
-          inverse: 'oklch(0.98 0.003 75)',      // on-dark text
+          DEFAULT: 'rgb(var(--color-ink) / <alpha-value>)',
+          muted:   'rgb(var(--color-ink-muted) / <alpha-value>)',
+          faint:   'rgb(var(--color-ink-faint) / <alpha-value>)',
+          inverse: 'rgb(var(--color-ink-inverse) / <alpha-value>)',
         },
 
-        // ─── Hairline (borders, dividers) ──────────────────────────────
+        // ─── Hairline (borders, dividers) ─────────────────────────
         hairline: {
-          DEFAULT: 'oklch(0.91 0.005 75)',      // standard border
-          strong:  'oklch(0.85 0.006 75)',      // emphasised border
+          DEFAULT: 'rgb(var(--color-hairline) / <alpha-value>)',
+          strong:  'rgb(var(--color-hairline-strong) / <alpha-value>)',
         },
 
-        // ─── Voltage (the one accent — industrial amber, "high voltage") ─
-        // Used sparingly: primary CTA, active state, live indicator, focus.
+        // ─── On-Accent (text rendered on accent-colored surfaces) ─
+        'on-accent': 'rgb(var(--color-on-accent) / <alpha-value>)',
+
+        // ─── Voltage (primary brand action color) ─────────────────
         voltage: {
-          50:  'oklch(0.97 0.025 80)',          // badge bg
-          100: 'oklch(0.93 0.06 80)',           // tinted panel
-          200: 'oklch(0.86 0.11 80)',           // ring, focus halo
-          400: 'oklch(0.72 0.16 70)',           // secondary accent text
-          500: 'oklch(0.68 0.18 65)',           // primary accent
-          600: 'oklch(0.60 0.18 60)',           // primary hover
-          700: 'oklch(0.50 0.16 55)',           // pressed
+          50:  'rgb(var(--color-voltage-50) / <alpha-value>)',
+          100: 'rgb(var(--color-voltage-100) / <alpha-value>)',
+          200: 'rgb(var(--color-voltage-200) / <alpha-value>)',
+          400: 'rgb(var(--color-voltage-400) / <alpha-value>)',
+          500: 'rgb(var(--color-voltage-500) / <alpha-value>)',
+          600: 'rgb(var(--color-voltage-600) / <alpha-value>)',
+          700: 'rgb(var(--color-voltage-700) / <alpha-value>)',
         },
 
-        // ─── Status (semantic — risk states, never decorative) ────────
-        // Each has a bg / fg / border triple tuned to live on `canvas`.
+        // ─── Status (semantic risk/health states) ─────────────────
         status: {
-          critical: { bg: 'oklch(0.96 0.025 25)',  fg: 'oklch(0.45 0.18 25)',  border: 'oklch(0.88 0.06 25)' },
-          warning:  { bg: 'oklch(0.96 0.025 75)',  fg: 'oklch(0.48 0.14 70)',  border: 'oklch(0.88 0.06 75)' },
-          ok:       { bg: 'oklch(0.96 0.020 150)', fg: 'oklch(0.45 0.12 150)', border: 'oklch(0.88 0.05 150)' },
-          info:     { bg: 'oklch(0.96 0.008 240)', fg: 'oklch(0.45 0.04 240)', border: 'oklch(0.88 0.02 240)' },
+          critical: {
+            bg:     'rgb(var(--color-status-critical-bg) / <alpha-value>)',
+            fg:     'rgb(var(--color-status-critical-fg) / <alpha-value>)',
+            border: 'rgb(var(--color-status-critical-border) / <alpha-value>)',
+          },
+          warning: {
+            bg:     'rgb(var(--color-status-warning-bg) / <alpha-value>)',
+            fg:     'rgb(var(--color-status-warning-fg) / <alpha-value>)',
+            border: 'rgb(var(--color-status-warning-border) / <alpha-value>)',
+          },
+          ok: {
+            bg:     'rgb(var(--color-status-ok-bg) / <alpha-value>)',
+            fg:     'rgb(var(--color-status-ok-fg) / <alpha-value>)',
+            border: 'rgb(var(--color-status-ok-border) / <alpha-value>)',
+          },
+          info: {
+            bg:     'rgb(var(--color-status-info-bg) / <alpha-value>)',
+            fg:     'rgb(var(--color-status-info-fg) / <alpha-value>)',
+            border: 'rgb(var(--color-status-info-border) / <alpha-value>)',
+          },
         },
 
-        // ─── Brand-on-dark (login + sidebar) ──────────────────────────
-        // Sidebar keeps the deep graphite but tinted slightly warm.
+        // ─── Graphite (sidebar, login, brand-on-dark surfaces) ────
         graphite: {
-          950: 'oklch(0.16 0.006 60)',
-          900: 'oklch(0.20 0.008 60)',
-          800: 'oklch(0.26 0.010 60)',
-          700: 'oklch(0.34 0.010 60)',
+          950: 'rgb(var(--color-graphite-950) / <alpha-value>)',
+          900: 'rgb(var(--color-graphite-900) / <alpha-value>)',
+          800: 'rgb(var(--color-graphite-800) / <alpha-value>)',
+          700: 'rgb(var(--color-graphite-700) / <alpha-value>)',
         },
       },
       fontFamily: {
-        sans: ['ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
     },

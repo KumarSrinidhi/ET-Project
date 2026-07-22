@@ -179,7 +179,7 @@ export default function PartsInventoryView() {
                                                     className="w-20 px-2 py-1 text-base sm:text-xs text-right border border-hairline rounded text-ink font-mono focus:outline-none focus:ring-2 focus:ring-voltage-500"
                                                 />
                                                 <button onClick={() => saveEdit(part.part_name)} disabled={savingPart}
-                                                    className="px-2 py-1 bg-voltage-500 text-graphite-950 rounded text-xs font-medium hover:bg-voltage-600 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-voltage-500">
+                                                    className="px-2 py-1 bg-voltage-500 text-on-accent rounded text-xs font-medium hover:bg-voltage-600 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-voltage-500">
                                                     {savingPart ? '...' : 'Save'}
                                                 </button>
                                                 <button onClick={cancelEdit}

@@ -38,8 +38,8 @@ const Login: React.FC = () => {
   return (
     <div className="min-h-screen bg-graphite-950 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-graphite-900 border border-graphite-800 rounded-xl p-8 relative overflow-hidden">
-        {/* Voltage accent corner — single beam, no generic radial gradients */}
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-voltage-500 to-transparent" />
+        {/* Brand accent line */}
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-voltage-500" />
 
         <div className="relative z-10">
           <div className="flex items-center justify-center mb-8">
@@ -88,7 +88,7 @@ const Login: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-voltage-500 hover:bg-voltage-600 active:bg-voltage-700 text-graphite-950 font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 mt-6 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-graphite-900 focus-visible:ring-voltage-500"
+              className="w-full bg-voltage-500 hover:bg-voltage-600 active:bg-voltage-700 text-on-accent font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 mt-6 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-graphite-900 focus-visible:ring-voltage-500"
             >
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Key className="w-5 h-5" />}
               {loading ? 'Authenticating...' : 'Sign In'}

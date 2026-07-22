@@ -19,6 +19,7 @@ import DepotSelector from './components/DepotSelector';
 import FleetComparisonDashboard from './components/FleetComparisonDashboard';
 import ExecutiveDashboard from './ExecutiveDashboard';
 import ApmAgentView from './components/ApmAgentView';
+import ThemeSwitcher from './components/ThemeSwitcher';
 import Login from './Login';
 import { useAuth } from './AuthContext';
 import { LogOut, User as UserIcon, ChevronDown, Menu } from 'lucide-react';
@@ -140,7 +141,7 @@ export default function App() {
             <p className="text-status-critical-fg mb-4 font-medium">{error}</p>
             <button
               onClick={() => { setError(null); setLoadingData(true); window.location.reload(); }}
-              className="px-6 py-2 bg-voltage-500 text-graphite-950 rounded-lg hover:bg-voltage-600 font-medium"
+              className="px-6 py-2 bg-voltage-500 text-on-accent rounded-lg hover:bg-voltage-600 font-medium"
             >
               Retry Connection
             </button>
@@ -195,7 +196,7 @@ export default function App() {
         ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6">
           <div className="flex items-center gap-3 text-ink-inverse mb-2">
-            <div className="w-8 h-8 bg-voltage-500 rounded-lg flex items-center justify-center text-graphite-950">
+            <div className="w-8 h-8 bg-voltage-500 rounded-lg flex items-center justify-center text-on-accent">
               <span className="font-bold">ET</span>
             </div>
             <h1 className="font-bold text-lg tracking-tight">EV Intelligence</h1>
@@ -213,9 +214,9 @@ export default function App() {
                 onClick={() => { navigate(item.path); setMobileSidebarOpen(false); }}
                 aria-current={isActive ? 'page' : undefined}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-voltage-500 focus-visible:ring-offset-2 focus-visible:ring-offset-graphite-900
-                  ${isActive ? 'bg-voltage-500 text-graphite-950' : 'hover:bg-graphite-800 hover:text-ink-inverse text-ink-inverse/80'}`}
+                  ${isActive ? 'bg-voltage-500 text-on-accent' : 'hover:bg-graphite-800 hover:text-ink-inverse text-ink-inverse/80'}`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'text-graphite-950' : 'text-ink-inverse/50'}`} />
+                <Icon className={`w-5 h-5 ${isActive ? 'text-on-accent' : 'text-ink-inverse/50'}`} />
                 {item.label}
               </button>
             );
@@ -245,6 +246,7 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-4">
+            <ThemeSwitcher />
             <div className="relative" ref={roleMenuRef}>
               <button
                 onClick={() => setShowRoleMenu(!showRoleMenu)}

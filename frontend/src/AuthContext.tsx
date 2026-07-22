@@ -36,7 +36,6 @@ const ROLE_VIEWS: Record<string, RoleView> = {
       { label: "Maintenance Schedule", path: "/maintenance", icon: "Calendar" },
       { label: "Work Orders", path: "/maintenance/orders", icon: "Tool" },
       { label: "Parts Inventory", path: "/maintenance/parts", icon: "Box" },
-      { label: "Mobile View", path: "/maintenance/mobile", icon: "Smartphone" },
       { label: "Business Analytics", path: "/analytics", icon: "BarChart3" },
       { label: "APM AI Agent", path: "/apm-agent", icon: "Bot" }
     ],
